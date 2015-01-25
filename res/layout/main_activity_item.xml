@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingBottom="2dp"
+    android:paddingTop="2dp" >
+
+    <!-- Connection Status BG -->
+
+    <View
+        android:id="@+id/base_connection_status"
+        android:layout_width="5dp"
+        android:layout_height="48dp"
+        android:layout_alignParentLeft="true"
+        android:layout_centerVertical="true"
+        android:background="#00FF00" />
+
+    <!-- Module Image Icon -->
+
+    <ImageView
+        android:id="@+id/base_icon"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_alignParentLeft="true"
+        android:layout_centerHorizontal="true"
+        android:layout_centerVertical="true"
+        android:layout_marginLeft="8dp"
+        android:layout_toRightOf="@id/base_connection_status"
+        android:contentDescription="Base icon" />
+
+    <!-- Unseen Messages -->
+
+    <TextView
+        android:id="@+id/base_unseen_count"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginLeft="4dp"
+        android:layout_marginTop="2dp"
+        android:layout_toRightOf="@id/base_icon"
+        android:background="@drawable/unseen_count_bg"
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        android:textColor="#FFFFFF"
+        android:textSize="13sp"
+        android:textStyle="bold" />
+
+    <!-- Module Title -->
+
+    <TextView
+        android:id="@+id/base_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="4dp"
+        android:layout_toRightOf="@id/base_unseen_count"
+        android:ellipsize="end"
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        android:text="Base Title in just one row"
+        android:textSize="20sp" />
+
+    <!-- Module Display Data -->
+
+    <TextView
+        android:id="@+id/base_display_data"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/base_title"
+        android:layout_marginBottom="2dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="4dp"
+        android:layout_toRightOf="@id/base_icon"
+        android:ellipsize="end"
+        android:gravity="center_vertical"
+        android:maxLines="2"
+        android:text="Module description here there this that saso mange."
+        android:textSize="14sp" />
+
+    <!-- Last Contact Stamp -->
+
+    <TextView
+        android:id="@+id/base_stamp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_below="@+id/base_display_data"
+        android:layout_marginLeft="8dp"
+        android:layout_toRightOf="@id/base_icon"
+        android:gravity="bottom"
+        android:paddingLeft="2dp"
+        android:paddingRight="2dp"
+        android:text="5 mins ago"
+        android:textSize="12sp" />
+
+    <!-- Module Type -->
+
+    <TextView
+        android:id="@+id/base_type"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/base_display_data"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="4dp"
+        android:layout_toRightOf="@id/base_stamp"
+        android:gravity="bottom|right"
+        android:text="Base Type"
+        android:textColor="#FF808080"
+        android:textSize="12sp" />
+
+</RelativeLayout>

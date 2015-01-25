@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content" >
+
+    <PreferenceCategory android:title="Auth Token" >
+        <EditTextPreference
+            android:key="auth_token"
+            android:maxLines="2"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:summary="Enter your Auth Token from the CTRL webadmin manually by retyping"
+            android:title="Enter Client Auth Token" />
+
+        <Preference
+            android:key="auth_token_scan"
+            android:maxLines="2"
+            android:summary="Scan your Auth Token from the CTRL webadmin with Barcode Scanner"
+            android:title="Scan Client Auth Token" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Server" >
+        <EditTextPreference
+            android:key="ctrl_server"
+            android:maxLines="1"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Server Name" />
+        <EditTextPreference
+            android:key="ctrl_server_port"
+            android:maxLines="1"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:title="Server Port" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Notifications" >
+        <Preference
+            android:key="gcm_rereg"
+            android:maxLines="2"
+            android:summary="Re-register your device to receive Push Notifications"
+            android:title="Push Notification Refresh" />
+    </PreferenceCategory>
+
+</PreferenceScreen>
