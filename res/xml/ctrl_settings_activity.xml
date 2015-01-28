@@ -35,8 +35,8 @@
     <PreferenceCategory android:title="Notifications" >
         <Preference
             android:key="gcm_rereg"
-            android:maxLines="2"
-            android:summary="Re-register your device to receive Push Notifications"
+            android:maxLines="3"
+            android:summary="Re-register your device to receive Push Notifications in case you are not receiving them anymore when app is closed"
             android:title="Push Notification Refresh" />
     </PreferenceCategory>
 

@@ -6,10 +6,19 @@ import com.google.zxing.integration.android.IntentIntegrator;
 import com.google.zxing.integration.android.IntentResult;
 
 import ba.ctrl.ctrltest1.database.DataSource;
+import ba.ctrl.ctrltest1.service.CtrlService;
+import ba.ctrl.ctrltest1.service.GcmBroadcastReceiver;
+import ba.ctrl.ctrltest1.service.ServicePingerAlarmReceiver;
+import ba.ctrl.ctrltest1.service.ServiceStatusReceiver;
+import ba.ctrl.ctrltest1.service.ServiceStatusReceiverCallbacks;
+import android.app.ActionBar;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.EditTextPreference;
@@ -19,13 +28,23 @@ import android.preference.PreferenceActivity;
 import android.preference.Preference.OnPreferenceChangeListener;
 import android.preference.Preference.OnPreferenceClickListener;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.widget.Toast;
 
-public class CtrlSettingsActivity extends PreferenceActivity implements OnPreferenceClickListener, OnPreferenceChangeListener {
+public class CtrlSettingsActivity extends PreferenceActivity implements OnPreferenceClickListener, OnPreferenceChangeListener, ServiceStatusReceiverCallbacks {
+    private static final String TAG = "CtrlSettingsActivity";
+
     protected AlertDialog editorDialog;
 
     private Context context;
     private DataSource dataSource = null;
+
+    private ServiceStatusReceiver serviceStatusReceiver;
+    private ActionBar actionBar;
+
+    // For "pinging" the Service to keep it running
+    private AlarmManager alarmMgr;
+    private PendingIntent alarmIntent;
 
     private SharedPreferences preferences;
     private SharedPreferences.Editor preferencesEditor;
@@ -42,6 +61,10 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
         }
 
         context = this.getApplicationContext();
+
+        actionBar = getActionBar();
+        // Show the Up button in the action bar.
+        actionBar.setDisplayHomeAsUpEnabled(true);
 
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
         preferencesEditor = preferences.edit();
@@ -66,6 +89,53 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
         // yep, this is a special case
         ((Preference) findPreference("gcm_rereg")).setOnPreferenceClickListener(this);
         ((Preference) findPreference("auth_token_scan")).setOnPreferenceClickListener(this);
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+        // Register required receivers
+        IntentFilter filter = new IntentFilter(CtrlService.BC_SERVICE_STATUS);
+        filter.addCategory(Intent.CATEGORY_DEFAULT);
+        serviceStatusReceiver = new ServiceStatusReceiver(this);
+        registerReceiver(serviceStatusReceiver, filter);
+
+        // Create AlarmManager to repeatedly "ping" the Service at 1/2 the rate
+        // Service expects (because we are using inexact repeating alarm). Do
+        // that as long as we are started in foreground. This will initially
+        // start the service!
+        // Do not ping the Service if there is not AuthToken set!
+        if (!dataSource.getPubVar("auth_token").equals("")) {
+            alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+            Intent intent = new Intent(context, ServicePingerAlarmReceiver.class);
+            alarmIntent = PendingIntent.getBroadcast(context, 2, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+            alarmMgr.setInexactRepeating(AlarmManager.RTC, System.currentTimeMillis(), 2000, alarmIntent);
+            Log.i(TAG, "AlarmManager set.");
+            actionBar.setSubtitle("Connecting...");
+
+            if (CommonStuff.getNetConnectivityStatus(context) == CommonStuff.NET_NOT_CONNECTED) {
+                actionBar.setSubtitle("Disconnected");
+                Toast.makeText(context, "No Internet Connectivity!", Toast.LENGTH_LONG).show();
+            }
+        }
+
+        // call this to update ActionBar Subtitle status
+        CommonStuff.serviceRequestStatus(context);
+    }
+
+    @Override
+    public void onStop() {
+        // Stop the AlarmManager from "pinging" the Service
+        if (alarmMgr != null) {
+            alarmMgr.cancel(alarmIntent);
+            Log.i(TAG, "AlarmManager cancelled.");
+        }
+
+        // Unregister receivers
+        unregisterReceiver(serviceStatusReceiver);
+
+        super.onStop();
     }
 
     @SuppressWarnings("deprecation")
@@ -106,6 +176,13 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
 
         dataSource.savePubVar(key, sNewVal);
 
+        // if user changed the AuthToken, re-connect
+        if ("auth_token".equals(key)) {
+            toaster("Success! Connecting...");
+            actionBar.setSubtitle("Connecting...");
+            CommonStuff.serviceTaskRestart(context);
+        }
+
         if (preference instanceof ListPreference) {
             setSummaryForListPreference(key, sNewVal);
         }
@@ -125,6 +202,10 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
             scanIntegrator.setSingleTargetApplication("com.google.zxing.client.android");
             scanIntegrator.initiateScan();
         }
+        else if ("gcm_rereg".equals(key)) {
+            CommonStuff.serviceTaskGcmRereg(context);
+            toaster("Done.");
+        }
 
         return false;
     }
@@ -143,13 +224,46 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
             preferencesEditor.apply();
             setSummaryForEditTextPreference("auth_token", scanContent);
 
-            toaster("Success, you can go back now!");
+            toaster("Success! Connecting...");
+            actionBar.setSubtitle("Connecting...");
+            CommonStuff.serviceTaskRestart(context);
         }
     }
 
     // Show Toast message at the bottom
     private void toaster(String msg) {
         Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void serviceConnectionError(Context context, Intent intent) {
+        ActionBar actionBar = getActionBar();
+        actionBar.setSubtitle("Error!");
+    }
+
+    @Override
+    public void serviceConnectionIdle(Context context, Intent intent) {
+        ActionBar actionBar = getActionBar();
+        actionBar.setSubtitle("Disconnected");
+    }
+
+    @Override
+    public void serviceConnectionRunning(Context context, Intent intent) {
+        ActionBar actionBar = getActionBar();
+        actionBar.setSubtitle("Connected");
+
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(GcmBroadcastReceiver.CTRL_NOTIFICATION_ID);
+    }
+
+    @Override
+    public void serviceCtrlErrorTooManyAuthAttempts(Context context, Intent intent) {
+        Toast.makeText(getApplicationContext(), "Too many authentication requests, verify Auth Token and try later!", Toast.LENGTH_LONG).show();
+    }
+
+    @Override
+    public void serviceCtrlErrorWrongAuthToken(Context context, Intent intent) {
+        Toast.makeText(getApplicationContext(), "Wrong Auth Token!", Toast.LENGTH_SHORT).show();
     }
 
 }

@@ -4,11 +4,14 @@ import ba.ctrl.ctrltest1.CommonStuff;
 import ba.ctrl.ctrltest1.CtrlSettingsActivity;
 import ba.ctrl.ctrltest1.database.DataSource;
 import ba.ctrl.ctrltest1.service.CtrlService;
+import ba.ctrl.ctrltest1.service.GcmBroadcastReceiver;
 import ba.ctrl.ctrltest1.service.ServicePingerAlarmReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiverCallbacks;
+import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlarmManager;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -30,6 +33,8 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
 
     private int rLayoutName;
     private Base base;
+
+    private ActionBar actionBar;
 
     // For "pinging" the Service to keep it running
     private AlarmManager alarmMgr;
@@ -66,6 +71,10 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
 
         TAG = TAG + " - " + base.getBaseid();
 
+        actionBar = getActionBar();
+        // Show the Up button in the action bar.
+        actionBar.setDisplayHomeAsUpEnabled(true);
+
         setTitle(base.getTitle());
     }
 
@@ -94,17 +103,19 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
         // Service expects (because we are using inexact repeating alarm). Do
         // that as long as we are started in foreground. This will initially
         // start the service!
-        // Do not ping the Service if there is no Internet connection!
-        if (CommonStuff.getNetConnectivityStatus(context) != CommonStuff.NET_NOT_CONNECTED) {
-            alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-            Intent intent = new Intent(context, ServicePingerAlarmReceiver.class);
-            alarmIntent = PendingIntent.getBroadcast(context, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-            alarmMgr.setInexactRepeating(AlarmManager.RTC, System.currentTimeMillis(), 2000, alarmIntent);
-            Log.i(TAG, "AlarmManager set.");
+        alarmMgr = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        Intent intent = new Intent(context, ServicePingerAlarmReceiver.class);
+        alarmIntent = PendingIntent.getBroadcast(context, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+        alarmMgr.setInexactRepeating(AlarmManager.RTC, System.currentTimeMillis(), 2000, alarmIntent);
+        Log.i(TAG, "AlarmManager set.");
+        actionBar.setSubtitle("Connecting...");
+
+        if (CommonStuff.getNetConnectivityStatus(context) == CommonStuff.NET_NOT_CONNECTED) {
+            Toast.makeText(context, "No Internet Connectivity!", Toast.LENGTH_LONG).show();
         }
-        else {
-            Toast.makeText(context, "No Internet Connectivity. Disconnected!", Toast.LENGTH_LONG).show();
-        }
+
+        // call this to update ActionBar Subtitle status
+        CommonStuff.serviceRequestStatus(context);
 
         dataSource.markBaseDataSeen(base.getBaseid());
     }
@@ -192,30 +203,36 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
     }
 
     @Override
-    public void serviceError(Context context, Intent intent) {
-        Toast.makeText(context, "Error, disconnected", Toast.LENGTH_SHORT).show();
+    public void serviceConnectionError(Context context, Intent intent) {
+        ActionBar actionBar = getActionBar();
+        actionBar.setSubtitle("Error!");
     }
 
     @Override
-    public void serviceIdle(Context context, Intent intent) {
-        Toast.makeText(context, "Idle, disconnected", Toast.LENGTH_SHORT).show();
+    public void serviceConnectionIdle(Context context, Intent intent) {
+        ActionBar actionBar = getActionBar();
+        actionBar.setSubtitle("Disconnected");
     }
 
     @Override
-    public void serviceRunning(Context context, Intent intent) {
-        Toast.makeText(context, "Connected", Toast.LENGTH_SHORT).show();
+    public void serviceConnectionRunning(Context context, Intent intent) {
+        ActionBar actionBar = getActionBar();
+        actionBar.setSubtitle("Connected");
+
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(GcmBroadcastReceiver.CTRL_NOTIFICATION_ID);
     }
 
     @Override
-    public void errorTooManyAuthAttempts(Context context, Intent intent) {
-        Toast.makeText(getApplicationContext(), "Too many authentication requests, change Auth Token and try later!", Toast.LENGTH_LONG).show();
+    public void serviceCtrlErrorTooManyAuthAttempts(Context context, Intent intent) {
+        Toast.makeText(getApplicationContext(), "Too many authentication requests, verify Auth Token and try later!", Toast.LENGTH_LONG).show();
 
         Intent settingsIntent = new Intent(context, CtrlSettingsActivity.class);
         startActivity(settingsIntent);
     }
 
     @Override
-    public void errorWrongAuthToken(Context context, Intent intent) {
+    public void serviceCtrlErrorWrongAuthToken(Context context, Intent intent) {
         Toast.makeText(getApplicationContext(), "Wrong Auth Token!", Toast.LENGTH_SHORT).show();
 
         Intent settingsIntent = new Intent(context, CtrlSettingsActivity.class);

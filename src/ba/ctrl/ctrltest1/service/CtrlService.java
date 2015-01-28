@@ -39,12 +39,14 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.net.ConnectivityManager;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
 import android.widget.Toast;
 
-public class CtrlService extends Service {
+public class CtrlService extends Service implements NetworkStateReceiverCallbacks {
     private static String TAG = "CtrlBaService";
 
     // Google Cloud Messaging PROJECT ID
@@ -58,6 +60,10 @@ public class CtrlService extends Service {
     public static final String BC_SERVICE_TASKS_OPEN_CONNECTION = BC_SERVICE_TASKS + "_OPEN_CONNECTION";
     public static final String BC_SERVICE_TASKS_RESTART_CONNECTION = BC_SERVICE_TASKS + "_RESTART_CONNECTION";
     public static final String BC_SERVICE_TASKS_CLOSE_CONNECTION = BC_SERVICE_TASKS + "_CLOSE_CONNECTION";
+    public static final String BC_SERVICE_TASKS_GCM_REREG = BC_SERVICE_TASKS + "_GCM_REREG";
+
+    // for sending broadcasts of task completion back TO activities
+    public static final String BC_SERVICE_TASKS_COMPLETION = "ba.ctrl.ctrltest1.intent.action.BC_SERVICE_TASKS_COMPLETION";
 
     // for sending broadcasts of new data arrival TO activities
     public static final String BC_NEW_DATA = "ba.ctrl.ctrltest1.intent.action.BC_NEW_DATA";
@@ -70,16 +76,16 @@ public class CtrlService extends Service {
 
     // for sending service status broadcasts TO activities
     public static final String BC_SERVICE_STATUS = "ba.ctrl.ctrltest1.intent.action.BC_SERVICE_STATUS";
-    public static final String BC_SERVICE_STATUS_SYSTEM_KEY = BC_SERVICE_STATUS + "_SYSTEM_STATE_KEY";
-    public static final String BC_SERVICE_STATUS_CTRL_ERROR_KEY = BC_SERVICE_STATUS + "_CTRL_ERROR_KEY";
     // System status
-    public static final String BC_SERVICE_STATUS_SYSTEM_IDLE = BC_SERVICE_STATUS_SYSTEM_KEY + "_IDLE";
-    public static final String BC_SERVICE_STATUS_SYSTEM_RUNNING = BC_SERVICE_STATUS_SYSTEM_KEY + "_RUNNING";
-    public static final String BC_SERVICE_STATUS_SYSTEM_ERROR = BC_SERVICE_STATUS_SYSTEM_KEY + "_ERROR";
+    public static final String BC_CONNECTION_STATUS_KEY = BC_SERVICE_STATUS + "_CONN_KEY";
+    public static final String BC_CONNECTION_STATUS_IDLE = BC_CONNECTION_STATUS_KEY + "_CONN_IDLE";
+    public static final String BC_CONNECTION_STATUS_RUNNING = BC_CONNECTION_STATUS_KEY + "_CONN_RUNNING";
+    public static final String BC_CONNECTION_STATUS_ERROR = BC_CONNECTION_STATUS_KEY + "_CONN_ERROR";
     // CTRL connection error
-    public static final String BC_SERVICE_STATUS_CTRL_ERROR_NONE = BC_SERVICE_STATUS_CTRL_ERROR_KEY + "_NONE";
-    public static final String BC_SERVICE_STATUS_CTRL_ERROR_WRONG_AUTH = BC_SERVICE_STATUS_CTRL_ERROR_KEY + "_WRONG_AUTH";
-    public static final String BC_SERVICE_STATUS_CTRL_ERROR_TOO_MANY = BC_SERVICE_STATUS_CTRL_ERROR_KEY + "_TOO_MANY";
+    public static final String BC_CTRL_STATUS_KEY = BC_SERVICE_STATUS + "_CTRL_KEY";
+    public static final String BC_CTRL_STATUS_NONE = BC_SERVICE_STATUS + "_CTRL_NONE";
+    public static final String BC_CTRL_STATUS_WRONG_AUTH = BC_SERVICE_STATUS + "_CTRL_WRONG_AUTH";
+    public static final String BC_CTRL_STATUS_TOO_MANY = BC_SERVICE_STATUS + "_CTRL_TOO_MANY";
 
     // need this for debugging, to be able to send Toasts to UI
     private Handler mHandler;
@@ -88,6 +94,7 @@ public class CtrlService extends Service {
     private Context context;
     // used to receive commands from Activities
     private ServiceTasksReceiver serviceTasksReceiver;
+    private NetworkStateReceiver networkStateReceiver;
     private SSLContext sslContext = null;
 
     // Errors during authentication can be: Wrong Auth Token or Too Many Auth
@@ -117,6 +124,9 @@ public class CtrlService extends Service {
     private Socket ctrlSocket = null;
     private Thread ctrlSocketThread = null;
     private SocketThreadStates ctrlSocketThreadState = SocketThreadStates.IDLE;
+
+    // private boolean ignoredFirstNetworkStateReceiverBroadcast = false;
+    private boolean networkConnected;
 
     // When we want to write to socket, we write to this mBufferOut
     private PrintWriter ctrlSocketBufferOut;
@@ -198,9 +208,30 @@ public class CtrlService extends Service {
         ctrlConnMaintainer = new Thread(new CtrlConnMaintainer());
         ctrlConnMaintainer.start();
 
-        openCtrlSocket();
+        // If there is an Internet connection available - connect, else don't
+        // connect until we receive the broadcast from NetworkStateReceiver
+        // class
+        if (CommonStuff.getNetConnectivityStatus(context) != CommonStuff.NET_NOT_CONNECTED) {
+            networkConnected = true;
+            Log.i(TAG, "Startup, there is internet, opening socket...");
+            openCtrlSocket();
+        }
+        else {
+            networkConnected = false;
+            Log.i(TAG, "Note: Service will not connect, there is no Internet connection...");
+            closeCtrlSocket();
+        }
 
-        //mHandler.post(new ToastRunnable("SERVICE onCreate()"));
+        // Register a receiver to receive notifications about Internet
+        // Connectivity. This has to be done AFTER we first initialize the
+        // networkConnected boolean, because this broadcast is sticky on *some
+        // devices*.
+        IntentFilter filterNet = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+        filterNet.addCategory(Intent.CATEGORY_DEFAULT);
+        networkStateReceiver = new NetworkStateReceiver(this);
+        registerReceiver(networkStateReceiver, filterNet);
+
+        // mHandler.post(new ToastRunnable("SERVICE onCreate()"));
         Log.i(TAG, "SERVICE onCreate()");
     }
 
@@ -222,9 +253,10 @@ public class CtrlService extends Service {
 
     @Override
     public void onDestroy() {
+        this.unregisterReceiver(networkStateReceiver);
         this.unregisterReceiver(serviceTasksReceiver);
 
-        //mHandler.post(new ToastRunnable("SERVICE onDestroy()"));
+        // mHandler.post(new ToastRunnable("SERVICE onDestroy()"));
         Log.i(TAG, "SERVICE onDestroy()");
 
         super.onDestroy();
@@ -308,7 +340,7 @@ public class CtrlService extends Service {
             while (running) {
                 // ***** SOCKET ERROR HANDLING
                 if (ctrlSocketThreadState == SocketThreadStates.ERROR) {
-                    Log.i(TAG, "CtrlConnMaintainer detected ERROR, will RESTART in 1sec unless stopped.");
+                    Log.i(TAG, "CtrlConnMaintainer detected ERROR, will RESTART in 1sec unless stopped or lost Internet.");
 
                     try {
                         Thread.sleep(1000);
@@ -317,7 +349,18 @@ public class CtrlService extends Service {
                         e.printStackTrace();
                     }
 
-                    ctrlThreadTask = ThreadTasks.RESTART;
+                    // Cancel re-connecting if we lost Internet in the
+                    // meantime
+                    if (networkConnected)
+                        ctrlThreadTask = ThreadTasks.RESTART;
+                    else {
+                        ctrlThreadTask = ThreadTasks.NONE;
+                        // Also clear the Error flag so we don't enter here
+                        // again. Once we restore the Internet connection
+                        // broadcast receiver will re-open the socket.
+                        ctrlSocketThreadState = SocketThreadStates.IDLE;
+                        broadcastConnectionStatus();
+                    }
                 }
 
                 // ***** AUTOMATIC SERVICE SHUTDOWN
@@ -360,7 +403,7 @@ public class CtrlService extends Service {
                     }
 
                     // Wait for socket Thread to complete so we can re-create it
-                    // or exit completelly depending on "running" flag
+                    // ...or not.
                     while (ctrlSocketThread != null && ctrlSocketThread.isAlive()) {
                         Log.i(TAG, "CtrlConnMaintainer waiting for thread to complete, current state = " + ctrlSocketThreadState);
 
@@ -587,7 +630,7 @@ public class CtrlService extends Service {
                                     }
 
                                     // update our GCM regID to Server
-                                    manageRegID();
+                                    manageRegID(false);
 
                                     // we have pending items in DB to send to
                                     // Server?
@@ -600,17 +643,18 @@ public class CtrlService extends Service {
                                     }
 
                                     ctrlError = CtrlErrors.NONE;
+                                    broadcastCtrlStatus();
                                 }
                                 else if (data.getInt("result") == 1) {
                                     ctrlError = CtrlErrors.WRONG_AUTH_TOKEN;
+                                    broadcastCtrlStatus();
                                     closeCtrlSocket();
                                 }
                                 else {
                                     ctrlError = CtrlErrors.TOO_MANY_AUTH_ATTEMPTS;
+                                    broadcastCtrlStatus();
                                     closeCtrlSocket();
                                 }
-
-                                broadcastServiceStatus();
                             }
                         }
                         else {
@@ -630,15 +674,15 @@ public class CtrlService extends Service {
      * If any of these is correct, it will re-register to GCM, save new regID to local DB
      * and send it to CTRL Server.
      */
-    private void manageRegID() {
+    private void manageRegID(boolean force) {
         String appVer = dataSource.getPubVar("appVer");
         int currAppVer = CommonStuff.getAppVersion(getApplicationContext());
 
         String regID = dataSource.getPubVar("regID");
 
-        // DEBUGGING
-        regID = ""; // clear this so we always register to GCM
-        // --
+        // clearing this will force re-reg
+        if (force)
+            regID = ""; // clear this so we always register to GCM
 
         // Time to register for new regID with Google Play Services
         if (!String.valueOf(currAppVer).equals(appVer) || regID.equals("")) {
@@ -713,6 +757,8 @@ public class CtrlService extends Service {
                 ctrlSocketBufferOut = new PrintWriter(new BufferedWriter(new OutputStreamWriter(ctrlSocket.getOutputStream(), "US-ASCII")), true);
                 BufferedReader mBufferIn = new BufferedReader(new InputStreamReader(ctrlSocket.getInputStream(), "US-ASCII"));
 
+                broadcastConnectionStatus();
+
                 // authorize to CTRL server!
                 ctrlAuthorize();
 
@@ -730,7 +776,7 @@ public class CtrlService extends Service {
             }
             catch (Exception e) {
                 ctrlSocketThreadState = SocketThreadStates.ERROR;
-                broadcastServiceStatus();
+                broadcastConnectionStatus();
 
                 Log.e(TAG, "Exception in CtrlSocketRunnable:", e);
                 e.printStackTrace();
@@ -747,7 +793,7 @@ public class CtrlService extends Service {
 
             // This will not execute on exception above :)
             ctrlSocketThreadState = SocketThreadStates.IDLE;
-            broadcastServiceStatus();
+            broadcastConnectionStatus();
         }
     }
 
@@ -788,7 +834,7 @@ public class CtrlService extends Service {
         if (ctrlSocketBufferOut != null && ctrlSocketBufferOut.checkError()) {
             // conn manager thread will re-connect us
             ctrlSocketThreadState = SocketThreadStates.ERROR;
-            broadcastServiceStatus();
+            broadcastConnectionStatus();
         }
     }
 
@@ -819,30 +865,58 @@ public class CtrlService extends Service {
         }
     }
 
-    private void broadcastServiceStatus() {
+    private void broadcastConnectionStatus() {
         Intent broadcastIntent = new Intent();
         broadcastIntent.setAction(BC_SERVICE_STATUS);
         broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
 
-        String systemKeyValue = BC_SERVICE_STATUS_SYSTEM_IDLE;
+        String systemKeyValue = BC_CONNECTION_STATUS_IDLE;
         if (ctrlSocketThreadState == SocketThreadStates.RUNNING)
-            systemKeyValue = BC_SERVICE_STATUS_SYSTEM_RUNNING;
+            systemKeyValue = BC_CONNECTION_STATUS_RUNNING;
         else if (ctrlSocketThreadState == SocketThreadStates.ERROR)
-            systemKeyValue = BC_SERVICE_STATUS_SYSTEM_ERROR;
-        broadcastIntent.putExtra(BC_SERVICE_STATUS_SYSTEM_KEY, systemKeyValue);
-
-        String ctrlErrorKeyValue = BC_SERVICE_STATUS_CTRL_ERROR_NONE;
-        if (ctrlError == CtrlErrors.TOO_MANY_AUTH_ATTEMPTS)
-            ctrlErrorKeyValue = BC_SERVICE_STATUS_CTRL_ERROR_TOO_MANY;
-        else if (ctrlError == CtrlErrors.WRONG_AUTH_TOKEN)
-            ctrlErrorKeyValue = BC_SERVICE_STATUS_CTRL_ERROR_WRONG_AUTH;
-        broadcastIntent.putExtra(BC_SERVICE_STATUS_CTRL_ERROR_KEY, ctrlErrorKeyValue);
+            systemKeyValue = BC_CONNECTION_STATUS_ERROR;
+        broadcastIntent.putExtra(BC_CONNECTION_STATUS_KEY, systemKeyValue);
 
         try {
             sendBroadcast(broadcastIntent);
         }
         catch (Exception e) {
             Log.e(TAG, "broadcastServiceStatus() Error: " + e.getMessage());
+        }
+    }
+
+    private void broadcastCtrlStatus() {
+        Intent broadcastIntent = new Intent();
+        broadcastIntent.setAction(BC_SERVICE_STATUS);
+        broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
+
+        String ctrlErrorKeyValue = BC_CTRL_STATUS_NONE;
+        if (ctrlError == CtrlErrors.TOO_MANY_AUTH_ATTEMPTS)
+            ctrlErrorKeyValue = BC_CTRL_STATUS_TOO_MANY;
+        else if (ctrlError == CtrlErrors.WRONG_AUTH_TOKEN)
+            ctrlErrorKeyValue = BC_CTRL_STATUS_WRONG_AUTH;
+        broadcastIntent.putExtra(BC_CTRL_STATUS_KEY, ctrlErrorKeyValue);
+
+        try {
+            sendBroadcast(broadcastIntent);
+        }
+        catch (Exception e) {
+            Log.e(TAG, "broadcastCtrlStatus() Error: " + e.getMessage());
+        }
+    }
+
+    private void broadcastServiceTaskCompletion(Bundle bundle) {
+        Intent broadcastIntent = new Intent();
+        broadcastIntent.setAction(BC_SERVICE_TASKS_COMPLETION);
+        broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
+
+        broadcastIntent.putExtras(bundle);
+
+        try {
+            sendBroadcast(broadcastIntent);
+        }
+        catch (Exception e) {
+            Log.e(TAG, "broadcastServiceTaskCompletion() Error: " + e.getMessage());
         }
     }
 
@@ -855,7 +929,7 @@ public class CtrlService extends Service {
             }
 
             if (intent.getStringExtra(BC_SERVICE_TASKS_KEY).equals(BC_SERVICE_TASKS_REQUEST_STATUS)) {
-                broadcastServiceStatus();
+                broadcastConnectionStatus();
             }
             else if (intent.getStringExtra(BC_SERVICE_TASKS_KEY).equals(BC_SERVICE_TASKS_OPEN_CONNECTION)) {
                 openCtrlSocket();
@@ -865,6 +939,15 @@ public class CtrlService extends Service {
             }
             else if (intent.getStringExtra(BC_SERVICE_TASKS_KEY).equals(BC_SERVICE_TASKS_CLOSE_CONNECTION)) {
                 closeCtrlSocket();
+            }
+            else if (intent.getStringExtra(BC_SERVICE_TASKS_KEY).equals(BC_SERVICE_TASKS_GCM_REREG)) {
+                Thread sender = new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        manageRegID(true);
+                    }
+                });
+                sender.start();
             }
             else if (intent.getStringExtra(BC_SERVICE_TASKS_KEY).equals(BC_SERVICE_TASKS_SEND_DATA)) {
                 final CtrlMessage msg = new CtrlMessage();
@@ -895,7 +978,25 @@ public class CtrlService extends Service {
                     dataSource.addTxClient2Server(msg.buildMessage());
                     startQueuedItemsSender();
                 }
+
+                // send task completition broadcast back along with whatever we
+                // received here
+                broadcastServiceTaskCompletion(intent.getExtras());
             }
+        }
+    }
+
+    @Override
+    public void networkStateChanged(boolean connected) {
+        if (!connected && networkConnected) {
+            networkConnected = false;
+            Log.i(TAG, "networkStateChanged, closing socket...");
+            closeCtrlSocket();
+        }
+        else if (connected && !networkConnected) {
+            networkConnected = true;
+            Log.i(TAG, "networkStateChanged, (re)opening socket...");
+            openCtrlSocket();
         }
     }
 

@@ -5,11 +5,11 @@ import android.content.Intent;
 
 public interface ServiceStatusReceiverCallbacks {
     // Service System Status
-    public void serviceError(Context context, Intent intent);
-    public void serviceIdle(Context context, Intent intent);
-    public void serviceRunning(Context context, Intent intent);
+    public void serviceConnectionError(Context context, Intent intent);
+    public void serviceConnectionIdle(Context context, Intent intent);
+    public void serviceConnectionRunning(Context context, Intent intent);
     
     // CTRL Errors
-    public void errorTooManyAuthAttempts(Context context, Intent intent);
-    public void errorWrongAuthToken(Context context, Intent intent);
+    public void serviceCtrlErrorTooManyAuthAttempts(Context context, Intent intent);
+    public void serviceCtrlErrorWrongAuthToken(Context context, Intent intent);
 }
