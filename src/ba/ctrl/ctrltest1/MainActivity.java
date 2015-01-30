@@ -3,6 +3,8 @@ package ba.ctrl.ctrltest1;
 import ba.ctrl.ctrltest1.adapters.BaseListAdapter;
 import ba.ctrl.ctrltest1.bases.Base;
 import ba.ctrl.ctrltest1.database.DataSource;
+import ba.ctrl.ctrltest1.service.BaseEventReceiver;
+import ba.ctrl.ctrltest1.service.BaseEventReceiverCallbacks;
 import ba.ctrl.ctrltest1.service.CtrlService;
 import ba.ctrl.ctrltest1.service.GcmBroadcastReceiver;
 import ba.ctrl.ctrltest1.service.ServicePingerAlarmReceiver;
@@ -18,7 +20,6 @@ import android.app.AlarmManager;
 import android.app.ListActivity;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -30,7 +31,7 @@ import android.widget.AdapterView;
 import android.widget.Toast;
 import ba.ctrl.ctrltest1.R;
 
-public class MainActivity extends ListActivity implements ServiceStatusReceiverCallbacks {
+public class MainActivity extends ListActivity implements ServiceStatusReceiverCallbacks, BaseEventReceiverCallbacks {
     private final static int REQ_CODE_PLAY_SERVICES_RESOLUTION = 9000;
     private static final String TAG = "MainActivity";
 
@@ -40,8 +41,7 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
     private BaseListAdapter adapter = null;
 
     private ServiceStatusReceiver serviceStatusReceiver;
-    private NewDataArrivalReceiver newDataArrivalReceiver;
-    private BaseStatusReceiver baseStatusReceiver;
+    private BaseEventReceiver baseEventReceiver;
 
     private ActionBar actionBar;
 
@@ -111,15 +111,10 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
         serviceStatusReceiver = new ServiceStatusReceiver(this);
         registerReceiver(serviceStatusReceiver, filter);
 
-        IntentFilter filter2 = new IntentFilter(CtrlService.BC_NEW_DATA);
+        IntentFilter filter2 = new IntentFilter(CtrlService.BC_BASE_EVENT);
         filter2.addCategory(Intent.CATEGORY_DEFAULT);
-        newDataArrivalReceiver = new NewDataArrivalReceiver();
-        registerReceiver(newDataArrivalReceiver, filter2);
-
-        IntentFilter filter3 = new IntentFilter(CtrlService.BC_BASE_STATUS);
-        filter3.addCategory(Intent.CATEGORY_DEFAULT);
-        baseStatusReceiver = new BaseStatusReceiver();
-        registerReceiver(baseStatusReceiver, filter3);
+        baseEventReceiver = new BaseEventReceiver(this);
+        registerReceiver(baseEventReceiver, filter2);
 
         // Create AlarmManager to repeatedly "ping" the Service at 1/2 the rate
         // Service expects (because we are using inexact repeating alarm). Do
@@ -181,8 +176,7 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
 
         // Unregister receivers
         unregisterReceiver(serviceStatusReceiver);
-        unregisterReceiver(newDataArrivalReceiver);
-        unregisterReceiver(baseStatusReceiver);
+        unregisterReceiver(baseEventReceiver);
 
         super.onStop();
     }
@@ -237,32 +231,6 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
         return true;
     }
 
-    public class NewDataArrivalReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.hasExtra(CtrlService.BC_NEW_DATA_BASE_ID_KEY)) {
-                // String baseId =
-                // intent.getStringExtra(CtrlService.BC_NEW_DATA_BASE_ID_KEY);
-                // doRefreshStuff(baseId);
-                refreshListView();
-            }
-        }
-    }
-
-    public class BaseStatusReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.hasExtra(CtrlService.BC_BASE_STATUS_BASE_ID_KEY)) {
-                // String baseId =
-                // intent.getStringExtra(CtrlService.BC_BASE_STATUS_BASE_ID_KEY);
-                // Toast.makeText(getApplicationContext(), "Base " + baseId +
-                // " is now " + dataSource.getBaseStatus(baseId),
-                // Toast.LENGTH_SHORT).show();
-                refreshListView();
-            }
-        }
-    }
-
     @Override
     public void serviceConnectionError(Context context, Intent intent) {
         ActionBar actionBar = getActionBar();
@@ -298,6 +266,16 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
 
         Intent settingsIntent = new Intent(context, CtrlSettingsActivity.class);
         startActivity(settingsIntent);
+    }
+
+    @Override
+    public void baseNewDataArrival(String baseId) {
+        refreshListView();
+    }
+
+    @Override
+    public void baseNewConnectionStatus(String baseId, boolean connected) {
+        refreshListView();
     }
 
 }

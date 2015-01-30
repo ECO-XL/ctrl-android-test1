@@ -76,8 +76,8 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
         }
 
         // Add summaries on startup
-        setSummaryForEditTextPreference("ctrl_server", dataSource.getPubVar("ctrl_server", CommonStuff.CTRL_SERVER));
-        setSummaryForEditTextPreference("ctrl_server_port", dataSource.getPubVar("ctrl_server_port", String.valueOf(CommonStuff.CTRL_VERSION)));
+        setSummaryForEditTextPreference("ctrl_server", dataSource.getPubVar("ctrl_server", CommonStuff.CTRL_DEFAULT_SERVER));
+        setSummaryForEditTextPreference("ctrl_server_port", dataSource.getPubVar("ctrl_server_port", String.valueOf(CommonStuff.CTRL_SERVER_DEFAULT_PORT)));
         if (!dataSource.getPubVar("auth_token").equals(""))
             setSummaryForEditTextPreference("auth_token", dataSource.getPubVar("auth_token"));
 
@@ -149,11 +149,13 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
         }
     }
 
+    /*
     @SuppressWarnings("deprecation")
     private void setSummaryForPreference(String key, String value) {
         Preference preference = (Preference) this.findPreference(key);
         preference.setSummary(value);
     }
+    */
 
     @SuppressWarnings("deprecation")
     private void setSummaryForListPreference(String key, String value) {
@@ -178,7 +180,7 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
 
         // if user changed the AuthToken, re-connect
         if ("auth_token".equals(key)) {
-            toaster("Success! Connecting...");
+            toaster("Success, connecting...");
             actionBar.setSubtitle("Connecting...");
             CommonStuff.serviceTaskRestart(context);
         }

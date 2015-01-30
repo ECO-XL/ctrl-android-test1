@@ -47,6 +47,9 @@ public class DataSource {
 
         // this makes it thread-safe the stupid-way, but it kind of works on my
         // phone!
+        // TODO UPDATE: this doesn't work great, read last two posts and do it
+        // the correct way:
+        // http://stackoverflow.com/questions/2647542/android-threading-and-database-locking
         if (useCounter <= 0) {
             handler.close();
         }

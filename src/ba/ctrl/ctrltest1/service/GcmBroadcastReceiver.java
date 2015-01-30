@@ -1,17 +1,13 @@
 package ba.ctrl.ctrltest1.service;
 
-import ba.ctrl.ctrltest1.R;
-
 import com.google.android.gms.gcm.GoogleCloudMessaging;
-
-import android.app.Notification;
 import android.app.NotificationManager;
-import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.content.WakefulBroadcastReceiver;
 import android.util.Log;
+import android.widget.Toast;
 
 public class GcmBroadcastReceiver extends WakefulBroadcastReceiver {
     private static final String TAG = "GcmBroadcastReceiver";
@@ -48,52 +44,50 @@ public class GcmBroadcastReceiver extends WakefulBroadcastReceiver {
 
         Log.i(TAG, "GcmBroadcastReceiver.onReceive():" + extras);
 
-        String title = "";
-        String content = "";
-        if ("onBaseStatusChange".equals(extras.getString("why"))) {
-            title = "Base Status";
-            if ("true".equals(extras.getString("connected")))
-                content = "Base is now online!";
-            else
-                content = "Base just went offline.";
-        }
-        else if ("onBaseMessage".equals(extras.getString("why"))) {
-            title = "Base Message";
-            content = "Service inserts into DB, and calls class to parse and alert if required...";
-        }
-
-        mNotificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        showNotification(context, "CTRL", title, content);
-
         /*
-                // start a service
-                Intent intentForService = new Intent(context, CtrlRemoteService.class);
-                intentForService.putExtras(extras); // forward extras we received from GCM to Service
-                intentForService.putExtra(CtrlRemoteService.IN_KEY_TASK_ACTION, CtrlRemoteService.VAL_TASK_ACTION_GCMRECEIVER); // tell service it was started by GCM
-                intentForService.putExtra(CtrlRemoteService.BY_ACTIVITY, ""); // started by no activity
-                Log.d(LOG_PREFIX, "GcmBroadcastReceiver.onReceive() starting Service...");
-                try
-                {
-                    startWakefulService(context, intentForService);
+                String title = "";
+                String content = "";
+                if ("onBaseStatusChange".equals(extras.getString("why"))) {
+                    title = "Base Status";
+                    if ("true".equals(extras.getString("connected")))
+                        content = "Base is now online!";
+                    else
+                        content = "Base just went offline.";
                 }
-                catch (Exception e)
-                {
-                    Log.e(LOG_PREFIX, "GcmBroadcastReceiver.onReceive() error during starting IntentService. Error: " + e.getMessage());
+                else if ("onBaseMessage".equals(extras.getString("why"))) {
+                    title = "Base Message";
+                    content = "Service inserts into DB, and calls class to parse and alert if required...";
+                }
+
+                mNotificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+                showNotification(context, "CTRL", title, content);
+                // TEST
+                private void showNotification(Context context, String ticker, String title, String content) {
+                    // This is who should be launched if the user selects our notification.
+                    Intent contentIntent = new Intent();
+
+                    Notification n = new Notification(R.drawable.ic_launcher, ticker, System.currentTimeMillis());
+                    PendingIntent appIntent = PendingIntent.getActivity(context, 0, contentIntent, 0);
+                    n.setLatestEventInfo(context, title, content, appIntent);
+
+                    mNotificationManager.notify(CTRL_NOTIFICATION_ID, n);
                 }
         */
 
+        // If this is a tickle notification, start the service and let it do
+        // it's job
+        if ("tickle-tickle".equals(extras.getString("what"))) {
+            Intent serInt = new Intent(context, CtrlService.class);
+            serInt.putExtra(CtrlService.BC_SERVICE_START_METHOD, false);
+            // context.startService(serInt);
+            startWakefulService(context, serInt);
+        }
+        else {
+            // If this notification is not about some Base, handle it
+            // differently. This is for future features...
+            Toast.makeText(context, "SERVICE NOTICE...", Toast.LENGTH_LONG).show();
+        }
+
         Log.d(TAG, "GcmBroadcastReceiver.onReceive() finished!");
-    }
-
-    // TEST
-    private void showNotification(Context context, String ticker, String title, String content) {
-        // This is who should be launched if the user selects our notification.
-        Intent contentIntent = new Intent();
-
-        Notification n = new Notification(R.drawable.ic_launcher, ticker, System.currentTimeMillis());
-        PendingIntent appIntent = PendingIntent.getActivity(context, 0, contentIntent, 0);
-        n.setLatestEventInfo(context, title, content, appIntent);
-
-        mNotificationManager.notify(CTRL_NOTIFICATION_ID, n);
     }
 }

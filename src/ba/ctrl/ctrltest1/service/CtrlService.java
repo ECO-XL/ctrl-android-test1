@@ -34,17 +34,15 @@ import ba.ctrl.ctrltest1.database.DataSource;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
 
+import android.app.Activity;
 import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
-import android.os.Bundle;
-import android.os.Handler;
 import android.os.IBinder;
 import android.util.Log;
-import android.widget.Toast;
 
 public class CtrlService extends Service implements NetworkStateReceiverCallbacks {
     private static String TAG = "CtrlBaService";
@@ -52,27 +50,26 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
     // Google Cloud Messaging PROJECT ID
     public static final String GCM_SENDER_ID = "982449092255";
 
+    public static final String BC_SERVICE_START_METHOD = "serviceStartNormalMethod";
+
     // for receiving broadcasts FROM activities
     public static final String BC_SERVICE_TASKS = "ba.ctrl.ctrltest1.intent.action.BC_SERVICE_TASKS";
     public static final String BC_SERVICE_TASKS_KEY = BC_SERVICE_TASKS + "_KEY";
     public static final String BC_SERVICE_TASKS_SEND_DATA = BC_SERVICE_TASKS + "_SEND_DATA";
-    public static final String BC_SERVICE_TASKS_REQUEST_STATUS = BC_SERVICE_TASKS + "_REQUEST_STATUS";
+    public static final String BC_SERVICE_TASKS_REQUEST_CONNECTION_STATUS = BC_SERVICE_TASKS + "_REQUEST_CONNECTION_STATUS";
     public static final String BC_SERVICE_TASKS_OPEN_CONNECTION = BC_SERVICE_TASKS + "_OPEN_CONNECTION";
     public static final String BC_SERVICE_TASKS_RESTART_CONNECTION = BC_SERVICE_TASKS + "_RESTART_CONNECTION";
     public static final String BC_SERVICE_TASKS_CLOSE_CONNECTION = BC_SERVICE_TASKS + "_CLOSE_CONNECTION";
     public static final String BC_SERVICE_TASKS_GCM_REREG = BC_SERVICE_TASKS + "_GCM_REREG";
 
     // for sending broadcasts of task completion back TO activities
-    public static final String BC_SERVICE_TASKS_COMPLETION = "ba.ctrl.ctrltest1.intent.action.BC_SERVICE_TASKS_COMPLETION";
+    // public static final String BC_SERVICE_TASKS_COMPLETION =
+    // "ba.ctrl.ctrltest1.intent.action.BC_SERVICE_TASKS_COMPLETION";
 
     // for sending broadcasts of new data arrival TO activities
-    public static final String BC_NEW_DATA = "ba.ctrl.ctrltest1.intent.action.BC_NEW_DATA";
-    public static final String BC_NEW_DATA_BASE_ID_KEY = BC_NEW_DATA + "_BASE_ID_KEY";
-
-    // for sending broadcasts of base status TO activities
-    public static final String BC_BASE_STATUS = "ba.ctrl.ctrltest1.intent.action.BC_BASE_STATUS";
-    public static final String BC_BASE_STATUS_BASE_ID_KEY = BC_BASE_STATUS + "_BASE_ID_KEY";
-    public static final String BC_BASE_STATUS_CONNECTED_KEY = BC_BASE_STATUS + "_CONNECTED_KEY";
+    public static final String BC_BASE_EVENT = "ba.ctrl.ctrltest1.intent.action.BC_BASE_EVENT";
+    public static final String BC_BASE_EVENT_BASE_ID_KEY = BC_BASE_EVENT + "_BASE_ID_KEY";
+    public static final String BC_BASE_EVENT_CONNECTED_KEY = BC_BASE_EVENT + "_BASE_CONNECTED_KEY";
 
     // for sending service status broadcasts TO activities
     public static final String BC_SERVICE_STATUS = "ba.ctrl.ctrltest1.intent.action.BC_SERVICE_STATUS";
@@ -86,9 +83,6 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
     public static final String BC_CTRL_STATUS_NONE = BC_SERVICE_STATUS + "_CTRL_NONE";
     public static final String BC_CTRL_STATUS_WRONG_AUTH = BC_SERVICE_STATUS + "_CTRL_WRONG_AUTH";
     public static final String BC_CTRL_STATUS_TOO_MANY = BC_SERVICE_STATUS + "_CTRL_TOO_MANY";
-
-    // need this for debugging, to be able to send Toasts to UI
-    private Handler mHandler;
 
     private DataSource dataSource = null;
     private Context context;
@@ -144,6 +138,10 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
     private final int pingIdleTime = 4000;
     private long pingStamp = 0;
 
+    // The way service has been started. It can be taken over by "normal" method
+    // at any time if started by GCM notification
+    private boolean serviceStartNormalMethod = false;
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -152,8 +150,6 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
 
         // "Open" the database
         dataSource = DataSource.getInstance(this);
-
-        mHandler = new Handler();
 
         context = getApplicationContext();
 
@@ -237,11 +233,30 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // We can be called (started) in two different ways:
+        // 1. First one is the "normal method" way: by an activity when user
+        // starts the
+        // app from class "ServicePingerAlarmReceiver". In this situation we
+        // will continue to run as long as any foreground activity "pings" us to
+        // remain alive.
+        // 2. Second one is by a GCM notification from class
+        // "GcmBroadcastReceiver". Here we will continue to run for as long as
+        // we communicate to CTRL server by prolonging the pingStamp each time.
+        // As soon as we stop communicating (sending/receiving) we will be
+        // scheduled to die in pingIdleTime just like in the first method. Now,
+        // if user in the meantime starts some activity, we will switch to
+        // method 1 because this onStartCommand will be called by another intent
+        // carrying "normalStart" boolean and we will set the
+        // serviceStartNormalMethod to true (actually we do that every time we
+        // are started, but in this case it will carry "true").
+
+        serviceStartNormalMethod = intent.getBooleanExtra(BC_SERVICE_START_METHOD, false);
+
         // This is actually where we receive "pings" from activities to start us
         // and keep us running
         pingStamp = System.currentTimeMillis();
 
-        Log.i(TAG, "SERVICE onStartCommand()");
+        // Log.i(TAG, "SERVICE onStartCommand()");
 
         return Service.START_NOT_STICKY;
     }
@@ -260,20 +275,6 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
         Log.i(TAG, "SERVICE onDestroy()");
 
         super.onDestroy();
-    }
-
-    // Toasting to UI
-    private class ToastRunnable implements Runnable {
-        String mText;
-
-        public ToastRunnable(String text) {
-            mText = text;
-        }
-
-        @Override
-        public void run() {
-            Toast.makeText(getApplicationContext(), mText, Toast.LENGTH_SHORT).show();
-        }
     }
 
     /**
@@ -349,8 +350,8 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                         e.printStackTrace();
                     }
 
-                    // Cancel re-connecting if we lost Internet in the
-                    // meantime
+                    // Cancel re-connecting if we were actually ERROR'ed by
+                    // Internet connection loss and there is still no connection
                     if (networkConnected)
                         ctrlThreadTask = ThreadTasks.RESTART;
                     else {
@@ -463,6 +464,12 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
      * @param mServerMessage
      */
     private void recvSocket(String mServerMessage) {
+        // if not started by Activity, prolong the pingStamp to keep running
+        // until we have nothing else to do
+        if (!serviceStartNormalMethod) {
+            pingStamp = System.currentTimeMillis();
+        }
+
         if (mServerMessage != null) {
             CtrlMessage msg = new CtrlMessage(mServerMessage);
             if (msg.getIsExtracted()) {
@@ -579,8 +586,10 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                         }
 
                                         dataSource.saveBaseConnectedStatus(data.getString("baseid"), data.getBoolean("connected"));
+                                        broadcastNewBaseConnectionStatus(data.getString("baseid"), data.getBoolean("connected"));
 
-                                        broadcastBaseStatus(data.getString("baseid"), data.getBoolean("connected"));
+                                        // TODO: maybe the same thing like
+                                        // bellow for new data arrival...
                                     }
                                 }
                                 catch (JSONException e) {
@@ -593,10 +602,32 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
 
                                 dataSource.saveBaseData(msg.getBaseIds().get(0), msg.getData().toString());
                                 dataSource.updateBaseLastActivity(msg.getBaseIds().get(0));
+                                broadcastNewBaseDataArrival(msg.getBaseIds().get(0));
 
-                                // lets notify any listening activity that some
-                                // data arrived, so it can show to user
-                                broadcastNewDataArrival(msg.getBaseIds().get(0));
+                                // TODO: if no activity is in foreground (here
+                                // is how to check:
+                                // http://www.mannaz.at/codebase/android-activity-foreground-surveillance/)
+                                // call a class that will parse all unseen and
+                                // unparsed received messages and process them
+                                // according to how user has set the alerts for
+                                // each Base that we received data from. We
+                                // might check if call to function above
+                                // "broadcastNewBaseDataArrival" was received by
+                                // some Activity and if not we call parser. If
+                                // it was received by an activity don't call
+                                // parser. That parser is also an "alerter" that
+                                // will show notifications and trigger alarms if
+                                // app is not in foreground. Hm, this means that
+                                // I will probably need to separate broadcasts
+                                // sent to MainActivity that lists Bases, and
+                                // those sent to the actual Activity for a
+                                // particular Base this data is for so that even
+                                // when looking at the screen when for example
+                                // temperature rises for some Base and user is
+                                // currently looking at another Base, he would
+                                // get instant notification/alarm about it...
+                                // Long day... I am going to sleep and not even
+                                // read what I just wrote above.
                             }
                         }
                     }
@@ -740,11 +771,11 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
 
                 String ctrlServer = dataSource.getPubVar("ctrl_server");
                 if (ctrlServer.equals(""))
-                    ctrlServer = CommonStuff.CTRL_SERVER;
+                    ctrlServer = CommonStuff.CTRL_DEFAULT_SERVER;
 
                 int ctrlServerPort;
                 if (dataSource.getPubVar("ctrl_server_port").equals("")) {
-                    ctrlServerPort = CommonStuff.CTRL_VERSION;
+                    ctrlServerPort = CommonStuff.CTRL_SERVER_DEFAULT_PORT;
                 }
                 else {
                     ctrlServerPort = Integer.parseInt(dataSource.getPubVar("ctrl_server_port"));
@@ -759,7 +790,7 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
 
                 broadcastConnectionStatus();
 
-                // authorize to CTRL server!
+                // Authorize to CTRL server!
                 ctrlAuthorize();
 
                 Log.i(TAG, "STARTED LISTENING ON SOCKET.");
@@ -775,25 +806,34 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                 }
             }
             catch (Exception e) {
-                ctrlSocketThreadState = SocketThreadStates.ERROR;
-                broadcastConnectionStatus();
-
                 Log.e(TAG, "Exception in CtrlSocketRunnable:", e);
                 e.printStackTrace();
 
+                ctrlSocketThreadState = SocketThreadStates.ERROR;
+                // broadcastConnectionStatus();
+
                 // The finally block should execute even with this return here!
-                return;
+                // return;
             }
             finally {
                 if (ctrlSocketBufferOut != null) {
                     ctrlSocketBufferOut.flush();
                     ctrlSocketBufferOut.close();
                 }
+
+                // In case socket was not closed by CtrlService itself, or by an
+                // error, we must change from RUNNING to IDLE. In case of error,
+                // remain in error state
+                if (ctrlSocketThreadState != SocketThreadStates.ERROR) {
+                    ctrlSocketThreadState = SocketThreadStates.IDLE;
+                }
+
+                broadcastConnectionStatus();
             }
 
             // This will not execute on exception above :)
-            ctrlSocketThreadState = SocketThreadStates.IDLE;
-            broadcastConnectionStatus();
+            // ctrlSocketThreadState = SocketThreadStates.IDLE;
+            // broadcastConnectionStatus();
         }
     }
 
@@ -826,6 +866,12 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
     }
 
     private void sendSocket(String data) {
+        // if not started by Activity, prolong the pingStamp to keep running
+        // until we have nothing else to do
+        if (!serviceStartNormalMethod) {
+            pingStamp = System.currentTimeMillis();
+        }
+
         if (ctrlSocketBufferOut != null && !ctrlSocketBufferOut.checkError() && ctrlSocketThreadState == SocketThreadStates.RUNNING) {
             ctrlSocketBufferOut.println(data);
             ctrlSocketBufferOut.flush();
@@ -838,11 +884,11 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
         }
     }
 
-    private void broadcastNewDataArrival(String baseId) {
+    private void broadcastNewBaseDataArrival(String baseId) {
         Intent broadcastIntent = new Intent();
-        broadcastIntent.setAction(BC_NEW_DATA);
+        broadcastIntent.setAction(BC_BASE_EVENT);
         broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
-        broadcastIntent.putExtra(BC_NEW_DATA_BASE_ID_KEY, baseId);
+        broadcastIntent.putExtra(BC_BASE_EVENT_BASE_ID_KEY, baseId);
         try {
             sendBroadcast(broadcastIntent);
         }
@@ -851,12 +897,12 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
         }
     }
 
-    private void broadcastBaseStatus(String baseId, boolean connected) {
+    private void broadcastNewBaseConnectionStatus(String baseId, boolean connected) {
         Intent broadcastIntent = new Intent();
-        broadcastIntent.setAction(BC_BASE_STATUS);
+        broadcastIntent.setAction(BC_BASE_EVENT);
         broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
-        broadcastIntent.putExtra(BC_BASE_STATUS_BASE_ID_KEY, baseId);
-        broadcastIntent.putExtra(BC_BASE_STATUS_CONNECTED_KEY, connected);
+        broadcastIntent.putExtra(BC_BASE_EVENT_BASE_ID_KEY, baseId);
+        broadcastIntent.putExtra(BC_BASE_EVENT_CONNECTED_KEY, connected);
         try {
             sendBroadcast(broadcastIntent);
         }
@@ -905,20 +951,22 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
         }
     }
 
-    private void broadcastServiceTaskCompletion(Bundle bundle) {
-        Intent broadcastIntent = new Intent();
-        broadcastIntent.setAction(BC_SERVICE_TASKS_COMPLETION);
-        broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
+    /*
+        private void broadcastServiceTaskCompletion(Bundle bundle) {
+            Intent broadcastIntent = new Intent();
+            broadcastIntent.setAction(BC_SERVICE_TASKS_COMPLETION);
+            broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
 
-        broadcastIntent.putExtras(bundle);
+            broadcastIntent.putExtras(bundle);
 
-        try {
-            sendBroadcast(broadcastIntent);
+            try {
+                sendBroadcast(broadcastIntent);
+            }
+            catch (Exception e) {
+                Log.e(TAG, "broadcastServiceTaskCompletion() Error: " + e.getMessage());
+            }
         }
-        catch (Exception e) {
-            Log.e(TAG, "broadcastServiceTaskCompletion() Error: " + e.getMessage());
-        }
-    }
+    */
 
     // Receiving tasks from Activities
     public class ServiceTasksReceiver extends BroadcastReceiver {
@@ -928,7 +976,7 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                 return;
             }
 
-            if (intent.getStringExtra(BC_SERVICE_TASKS_KEY).equals(BC_SERVICE_TASKS_REQUEST_STATUS)) {
+            if (intent.getStringExtra(BC_SERVICE_TASKS_KEY).equals(BC_SERVICE_TASKS_REQUEST_CONNECTION_STATUS)) {
                 broadcastConnectionStatus();
             }
             else if (intent.getStringExtra(BC_SERVICE_TASKS_KEY).equals(BC_SERVICE_TASKS_OPEN_CONNECTION)) {
@@ -979,9 +1027,11 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                     startQueuedItemsSender();
                 }
 
-                // send task completition broadcast back along with whatever we
-                // received here
-                broadcastServiceTaskCompletion(intent.getExtras());
+                // Send back a result code. This will go back only if we were
+                // called by sendOrderedBroadcast, not by sendBroadcast.
+                // broadcastServiceTaskCompletion(intent.getExtras()); <- not
+                // anymore
+                this.setResultCode(Activity.RESULT_OK);
             }
         }
     }

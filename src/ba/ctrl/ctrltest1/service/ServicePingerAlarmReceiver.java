@@ -1,9 +1,8 @@
 package ba.ctrl.ctrltest1.service;
 
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.util.Log;
+import android.support.v4.content.WakefulBroadcastReceiver;
 
 /**
  * This class starts the Service if not started. If Service is already started only its onStartCommand() is called.
@@ -12,14 +11,15 @@ import android.util.Log;
  * @author Trax
  *
  */
-public class ServicePingerAlarmReceiver extends BroadcastReceiver {
+public class ServicePingerAlarmReceiver extends WakefulBroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
         Intent serInt = new Intent(context, CtrlService.class);
-        context.startService(serInt);
-
-        Log.i("ServicePingerAlarmReceiver", "Pinging Service...");
+        serInt.putExtra(CtrlService.BC_SERVICE_START_METHOD, true);
+        // context.startService(serInt);
+        startWakefulService(context, serInt);
+        // Log.i("ServicePingerAlarmReceiver", "Pinging Service...");
     }
 
 }

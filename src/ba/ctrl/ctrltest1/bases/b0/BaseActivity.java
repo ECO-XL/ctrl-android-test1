@@ -3,11 +3,7 @@ package ba.ctrl.ctrltest1.bases.b0;
 import ba.ctrl.ctrltest1.R;
 import ba.ctrl.ctrltest1.bases.Base;
 import ba.ctrl.ctrltest1.bases.BaseTemplateActivity;
-import android.os.Build;
 import android.os.Bundle;
-import android.app.ActionBar;
-import android.content.Context;
-import android.content.Intent;
 import android.view.Menu;
 
 public class BaseActivity extends BaseTemplateActivity {
@@ -79,43 +75,15 @@ public class BaseActivity extends BaseTemplateActivity {
         return true;
     }
 
-    /*
     @Override
-    public void serviceError(Context context, Intent intent) {
-        super.serviceError(context, intent);
-    }
-
-    @Override
-    public void serviceIdle(Context context, Intent intent) {
-        super.serviceIdle(context, intent);
-    }
-
-    @Override
-    public void serviceRunning(Context context, Intent intent) {
-        super.serviceRunning(context, intent);
-    }
-
-    @Override
-    public void errorTooManyAuthAttempts(Context context, Intent intent) {
-        super.errorTooManyAuthAttempts(context, intent);
-    }
-
-    @Override
-    public void errorWrongAuthToken(Context context, Intent intent) {
-        super.errorWrongAuthToken(context, intent);
-    }
-    */
-
-    @Override
-    public void newDataArrivalEvent(Context context, Intent intent, String baseId) {
-        super.newDataArrivalEvent(context, intent, baseId);
+    public void baseNewDataArrival(String baseId) {
+        super.getDataSource().markBaseDataSeen(base.getBaseid());
 
         // do sometihng about this new data arrival event
     }
 
     @Override
-    public void newBaseStatusEvent(String baseId, boolean connected) {
-        super.newBaseStatusEvent(baseId, connected);
+    public void baseNewConnectionStatus(String baseId, boolean connected) {
 
         // do something about this new base status event
     }

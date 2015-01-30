@@ -3,6 +3,8 @@ package ba.ctrl.ctrltest1.bases;
 import ba.ctrl.ctrltest1.CommonStuff;
 import ba.ctrl.ctrltest1.CtrlSettingsActivity;
 import ba.ctrl.ctrltest1.database.DataSource;
+import ba.ctrl.ctrltest1.service.BaseEventReceiver;
+import ba.ctrl.ctrltest1.service.BaseEventReceiverCallbacks;
 import ba.ctrl.ctrltest1.service.CtrlService;
 import ba.ctrl.ctrltest1.service.GcmBroadcastReceiver;
 import ba.ctrl.ctrltest1.service.ServicePingerAlarmReceiver;
@@ -13,7 +15,6 @@ import android.app.Activity;
 import android.app.AlarmManager;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -21,15 +22,14 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
 
-public class BaseTemplateActivity extends Activity implements ServiceStatusReceiverCallbacks {
+public class BaseTemplateActivity extends Activity implements ServiceStatusReceiverCallbacks, BaseEventReceiverCallbacks {
     private String TAG = "BaseTemplateActivity";
 
     private Context context;
     private DataSource dataSource = null;
 
     private ServiceStatusReceiver serviceStatusReceiver;
-    private NewDataArrivalReceiver newDataArrivalReceiver;
-    private BaseStatusReceiver baseStatusReceiver;
+    private BaseEventReceiver baseEventReceiver;
 
     private int rLayoutName;
     private Base base;
@@ -89,15 +89,10 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
         serviceStatusReceiver = new ServiceStatusReceiver(this);
         registerReceiver(serviceStatusReceiver, filter);
 
-        IntentFilter filter2 = new IntentFilter(CtrlService.BC_NEW_DATA);
+        IntentFilter filter2 = new IntentFilter(CtrlService.BC_BASE_EVENT);
         filter2.addCategory(Intent.CATEGORY_DEFAULT);
-        newDataArrivalReceiver = new NewDataArrivalReceiver();
-        registerReceiver(newDataArrivalReceiver, filter2);
-
-        IntentFilter filter3 = new IntentFilter(CtrlService.BC_BASE_STATUS);
-        filter3.addCategory(Intent.CATEGORY_DEFAULT);
-        baseStatusReceiver = new BaseStatusReceiver();
-        registerReceiver(baseStatusReceiver, filter3);
+        baseEventReceiver = new BaseEventReceiver(this);
+        registerReceiver(baseEventReceiver, filter2);
 
         // Create AlarmManager to repeatedly "ping" the Service at 1/2 the rate
         // Service expects (because we are using inexact repeating alarm). Do
@@ -156,8 +151,7 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
 
         // Unregister receivers
         unregisterReceiver(serviceStatusReceiver);
-        unregisterReceiver(newDataArrivalReceiver);
-        unregisterReceiver(baseStatusReceiver);
+        unregisterReceiver(baseEventReceiver);
 
         super.onStop();
     }
@@ -167,39 +161,6 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
         Log.i(TAG, "onDestroy()");
 
         super.onDestroy();
-    }
-
-    public class NewDataArrivalReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.hasExtra(CtrlService.BC_NEW_DATA_BASE_ID_KEY)) {
-                String baseId = intent.getStringExtra(CtrlService.BC_NEW_DATA_BASE_ID_KEY);
-                newDataArrivalEvent(context, intent, baseId);
-            }
-        }
-    }
-
-    // Will be overriden by child class
-    public void newDataArrivalEvent(Context context, Intent intent, String baseId) {
-        dataSource.markBaseDataSeen(base.getBaseid());
-
-        // The rest is not implemented here...
-    }
-
-    public class BaseStatusReceiver extends BroadcastReceiver {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (intent.hasExtra(CtrlService.BC_BASE_STATUS_BASE_ID_KEY) && intent.hasExtra(CtrlService.BC_BASE_STATUS_CONNECTED_KEY)) {
-                String baseId = intent.getStringExtra(CtrlService.BC_BASE_STATUS_BASE_ID_KEY);
-                boolean connected = intent.getBooleanExtra(CtrlService.BC_BASE_STATUS_CONNECTED_KEY, false);
-                newBaseStatusEvent(baseId, connected);
-            }
-        }
-    }
-
-    // Will be overriden by child class
-    public void newBaseStatusEvent(String baseId, boolean connected) {
-        // Not implemented here...
     }
 
     @Override
@@ -257,5 +218,17 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
 
     public DataSource getDataSource() {
         return dataSource;
+    }
+
+    // Will be overriden by child class
+    @Override
+    public void baseNewDataArrival(String baseId) {
+        // Not implemented here...
+    }
+
+    // Will be overriden by child class
+    @Override
+    public void baseNewConnectionStatus(String baseId, boolean connected) {
+        // Not implemented here...
     }
 }

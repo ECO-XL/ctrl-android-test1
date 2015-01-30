@@ -14,8 +14,8 @@ public class CommonStuff {
     private final static String TAG = "CommonStuff";
 
     // default CTRL server
-    public final static int CTRL_VERSION = 9001;
-    public final static String CTRL_SERVER = "ctrl.ba";
+    public final static int CTRL_SERVER_DEFAULT_PORT = 9001;
+    public final static String CTRL_DEFAULT_SERVER = "ctrl.ba";
 
     public final static int NET_NOT_CONNECTED = 0;
     public final static int NET_WIFI = 1;
@@ -25,7 +25,7 @@ public class CommonStuff {
         Intent broadcastIntent = new Intent();
         broadcastIntent.setAction(CtrlService.BC_SERVICE_TASKS);
         broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
-        broadcastIntent.putExtra(CtrlService.BC_SERVICE_TASKS_KEY, CtrlService.BC_SERVICE_TASKS_REQUEST_STATUS);
+        broadcastIntent.putExtra(CtrlService.BC_SERVICE_TASKS_KEY, CtrlService.BC_SERVICE_TASKS_REQUEST_CONNECTION_STATUS);
         try {
             context.sendBroadcast(broadcastIntent);
         }

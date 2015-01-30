@@ -3,7 +3,6 @@ package ba.ctrl.ctrltest1.adapters;
 import java.util.ArrayList;
 
 import android.content.Context;
-import android.graphics.Color;
 import android.text.format.DateUtils;
 import android.view.LayoutInflater;
 import android.view.View;
