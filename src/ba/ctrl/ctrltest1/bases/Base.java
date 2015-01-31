@@ -1,16 +1,20 @@
 package ba.ctrl.ctrltest1.bases;
 
+import ba.ctrl.ctrltest1.R;
 import android.content.Context;
-import android.graphics.Color;
+import android.util.Log;
 
 public class Base {
+    private final static String TAG = "Base";
+
+    private DisplayDataParserInterface displayDataParserClass = null;
+
     private String baseid;
     private String title;
     private boolean connected;
     private long stamp;
     private String displayData;
-    private int baseType;
-    private String baseTypeTitle;
+    private int baseType = 0;
 
     public Base() {
     }
@@ -28,10 +32,17 @@ public class Base {
     public int getBaseIconRID(Context context) {
         int iconRes = context.getResources().getIdentifier("ic_base_" + this.baseType, "drawable", context.getPackageName());
         // icon not found?
-        if (iconRes == 0) {
+        if (iconRes == 0)
             iconRes = context.getResources().getIdentifier("ic_base_unknown", "drawable", context.getPackageName());
-        }
         return iconRes;
+    }
+
+    // Resolves Base Type from array resources
+    public String getBaseTypeTitle(Context context) {
+        String[] baseTitles = context.getResources().getStringArray(R.array.pref_base_type_titles);
+        if (baseTitles.length <= this.baseType)
+            return "Resources error";
+        return baseTitles[this.baseType];
     }
 
     public String getBaseid() {
@@ -43,12 +54,6 @@ public class Base {
     }
 
     public String getTitle() {
-        // TODO: move this to strings.xml
-
-        if (title.equals("")) {
-            title = "New Base";
-        }
-
         return title;
     }
 
@@ -64,12 +69,11 @@ public class Base {
         this.connected = connected;
     }
 
-    public int getStatusColor() {
-        // TODO: Move to strings.xml or wherever
+    public int getStatusColor(Context context) {
         if (connected)
-            return Color.parseColor("#7ed755");
+            return context.getResources().getColor(R.color.base_connected_color);
         else
-            return Color.parseColor("#d05b5b");
+            return context.getResources().getColor(R.color.base_disconnected_color);
     }
 
     public long getStamp() {
@@ -80,12 +84,39 @@ public class Base {
         this.stamp = stamp;
     }
 
-    public String getDisplayData() {
-        // TODO: figure how to make this dynamically for each Base Type
-        displayData = "Make me...";
+    @SuppressWarnings("unchecked")
+    public String getDisplayData(Context context) {
+        if (displayDataParserClass == null) {
+            String cname = context.getPackageName() + ".bases.b" + this.baseType + ".DisplayDataParser";
+            Class<? extends DisplayDataParserInterface> c = null;
+            if (cname != null) {
+                try {
+                    c = (Class<? extends DisplayDataParserInterface>) Class.forName(cname);
+                }
+                catch (ClassNotFoundException e) {
+                    Log.e(TAG, "Looking for DisplayDataParser Class (" + cname + "), not found: " + e.getMessage());
+                }
+                catch (Exception e) {
+                    Log.e(TAG, "Looking for DisplayDataParser Class Error: " + e.getMessage());
+                }
+            }
 
-        if (baseType == 0) {
-            displayData = baseid;
+            if (c != null) {
+                try {
+                    this.displayDataParserClass = c.newInstance();
+                }
+                catch (InstantiationException e) {
+                    e.printStackTrace();
+                }
+                catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        if( displayDataParserClass != null )
+        {
+            displayData = displayDataParserClass.doParse(context, this);
         }
 
         return displayData;
@@ -101,20 +132,6 @@ public class Base {
 
     public void setBaseType(int baseType) {
         this.baseType = baseType;
-    }
-
-    public String getBaseTypeTitle() {
-        // TODO: figure how to make this dynamically for each Base Type
-
-        if (baseType == 0) {
-            baseTypeTitle = "Generic Base";
-        }
-
-        return baseTypeTitle;
-    }
-
-    public void setBaseTypeTitle(String baseTypeTitle) {
-        this.baseTypeTitle = baseTypeTitle;
     }
 
 }

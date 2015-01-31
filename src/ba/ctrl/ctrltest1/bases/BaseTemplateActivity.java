@@ -36,6 +36,8 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
 
     private ActionBar actionBar;
 
+    private int baseType;
+
     // For "pinging" the Service to keep it running
     private AlarmManager alarmMgr;
     private PendingIntent alarmIntent;
@@ -57,25 +59,26 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
         if (extras == null) {
             Log.e(TAG, "Could't load Activity because Intent Extras is null!");
             Toast.makeText(context, "Couldn't load Activity!", Toast.LENGTH_LONG).show();
-            finish(); // don't go any further
+            finish();
+            return; // don't go any further
         }
 
         String baseId = extras.getString("baseid");
         base = dataSource.getBase(baseId); // Fetch Base
-
         if (base == null) {
             Log.e(TAG, "Could't load Activity because Base is not fetched from DB!");
             Toast.makeText(context, "Couldn't load Activity!", Toast.LENGTH_LONG).show();
-            finish(); // don't go any further
+            finish();
+            return; // don't go any further
         }
+
+        baseType = base.getBaseType();
 
         TAG = TAG + " - " + base.getBaseid();
 
         actionBar = getActionBar();
         // Show the Up button in the action bar.
         actionBar.setDisplayHomeAsUpEnabled(true);
-
-        setTitle(base.getTitle());
     }
 
     @Override
@@ -130,6 +133,24 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
     @Override
     protected void onResume() {
         super.onResume();
+
+        // Base might have been deleted if we came back from Settings, or it
+        // might have some data changed. Lets handle that.
+        base = dataSource.getBase(base.getBaseid());
+        if (base == null) {
+            Toast.makeText(context, "Base deleted!", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+        // Check if base type has just been changed and if yes, we need to kill
+        // this screen
+        if (baseType != base.getBaseType()) {
+            Toast.makeText(context, "Base Type changed, tap again to open", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+        // Always set title...
+        setTitle(base.getTitle());
 
         Log.i(TAG, "onResume()");
     }

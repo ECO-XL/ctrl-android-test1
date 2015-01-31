@@ -63,6 +63,10 @@
             android:parentActivityName="ba.ctrl.ctrltest1.MainActivity" >
         </activity>
         <activity
+            android:name="ba.ctrl.ctrltest1.bases.BaseSettingsActivity"
+            android:label="@string/base_settings_activity_name" >
+        </activity>
+        <activity
             android:name="ba.ctrl.ctrltest1.bases.b0.BaseActivity"
             android:label="@string/title_activity_base0"
             android:parentActivityName="ba.ctrl.ctrltest1.MainActivity" >

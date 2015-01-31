@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import ba.ctrl.ctrltest1.R;
 import ba.ctrl.ctrltest1.bases.Base;
 
 import android.content.ContentValues;
@@ -14,23 +15,25 @@ import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 
 public class DataSource {
-    private SQLiteDatabase db;
-    private DatabaseHandler handler;
-    private static DataSource instance;
+    private SQLiteDatabase db = null;
+    private DatabaseHandler handler = null;
+    private static DataSource instance = null;
     private int useCounter = 0;
 
     private DataSource() {
     }
 
     private DataSource(Context context) {
-        handler = new DatabaseHandler(context);
+        if (handler == null)
+            handler = new DatabaseHandler(context.getApplicationContext());
     }
 
     /**
      * Call this to get access to the instance of CtrlDataSource Singleton
      */
     public static synchronized DataSource getInstance(Context context) {
-        instance = new DataSource(context);
+        if (instance == null)
+            instance = new DataSource(context);
         return instance;
     }
 
@@ -47,9 +50,8 @@ public class DataSource {
 
         // this makes it thread-safe the stupid-way, but it kind of works on my
         // phone!
-        // TODO UPDATE: this doesn't work great, read last two posts and do it
-        // the correct way:
-        // http://stackoverflow.com/questions/2647542/android-threading-and-database-locking
+        // TODO UPDATE: this doesn't work great, I still get Database Locked
+        // errors
         if (useCounter <= 0) {
             handler.close();
         }
@@ -112,7 +114,7 @@ public class DataSource {
      * @param baseId
      * @param connected
      */
-    public void saveBaseConnectedStatus(String baseId, boolean connected) {
+    public void saveBaseConnectedStatus(Context context, String baseId, boolean connected) {
         if (baseId.equals(""))
             return;
 
@@ -139,6 +141,7 @@ public class DataSource {
             open();
             ContentValues values = new ContentValues();
             values.put("baseid", baseId);
+            values.put("title", context.getResources().getString(R.string.new_base_title));
             values.put("connected", connected ? 1 : 0);
             values.put("stamp", System.currentTimeMillis());
             db.insert("base", null, values);
@@ -174,6 +177,19 @@ public class DataSource {
         close();
     }
 
+    public void updateBase(Base base) {
+        if (base == null || base.getBaseid() == null)
+            return;
+
+        open();
+        ContentValues values = new ContentValues();
+        values.put("title", base.getTitle());
+        values.put("base_type", base.getBaseType());
+        db.update("base", values, "baseid = ?", new String[] { base.getBaseid() });
+
+        close();
+    }
+
     /**
      * Used only for DEBUGING!
      * 
@@ -185,7 +201,7 @@ public class DataSource {
         String ret = "";
 
         // return information on how many items are still waiting in queue
-        Cursor cursorCheck = db.rawQuery("SELECT data FROM base_data WHERE baseid = ? ORDER BY IDpk DESC LIMIT 1", new String[] { baseId });
+        Cursor cursorCheck = db.rawQuery("SELECT data FROM base_data WHERE baseid = ? ORDER BY IDbase_data DESC LIMIT 1", new String[] { baseId });
         if (cursorCheck.moveToFirst()) {
             ret = cursorCheck.getString(0);
         }
@@ -236,6 +252,15 @@ public class DataSource {
         open();
 
         db.delete("client2server", "", null);
+
+        close();
+    }
+
+    public void deleteBase(String baseId) {
+        open();
+
+        db.delete("base", "baseid = ?", new String[] { baseId });
+        db.delete("base_data", "baseid = ?", new String[] { baseId });
 
         close();
     }

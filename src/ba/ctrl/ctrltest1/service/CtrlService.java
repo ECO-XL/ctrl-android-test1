@@ -9,6 +9,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.security.KeyManagementException;
@@ -585,7 +587,7 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                             dataSource.updateBaseLastActivity(data.getString("baseid"));
                                         }
 
-                                        dataSource.saveBaseConnectedStatus(data.getString("baseid"), data.getBoolean("connected"));
+                                        dataSource.saveBaseConnectedStatus(context, data.getString("baseid"), data.getBoolean("connected"));
                                         broadcastNewBaseConnectionStatus(data.getString("baseid"), data.getBoolean("connected"));
 
                                         // TODO: maybe the same thing like
@@ -604,8 +606,8 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                 dataSource.updateBaseLastActivity(msg.getBaseIds().get(0));
                                 broadcastNewBaseDataArrival(msg.getBaseIds().get(0));
 
-                                // TODO: if no activity is in foreground (here
-                                // is how to check:
+                                // TODO: if no activity for this BaseId is in
+                                // foreground (here is how to check:
                                 // http://www.mannaz.at/codebase/android-activity-foreground-surveillance/)
                                 // call a class that will parse all unseen and
                                 // unparsed received messages and process them
@@ -1000,7 +1002,20 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
             else if (intent.getStringExtra(BC_SERVICE_TASKS_KEY).equals(BC_SERVICE_TASKS_SEND_DATA)) {
                 final CtrlMessage msg = new CtrlMessage();
                 msg.setIsNotification(intent.hasExtra("isNotification") && intent.getBooleanExtra("isNotification", false));
-                msg.setData(intent.getStringExtra("sendData"));
+
+                String sendData = intent.getStringExtra("sendData");
+                try {
+                    sendData = String.format("%x", new BigInteger(1, sendData.getBytes("US-ASCII")));
+                }
+                catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
+                // never send odd length to Server
+                if (sendData.length() % 2 != 0) {
+                    sendData = "0" + sendData;
+                }
+
+                msg.setData(sendData);
 
                 if (intent.hasExtra("baseIds")) {
                     ArrayList<String> baseIds = intent.getStringArrayListExtra("baseIds");
@@ -1031,7 +1046,8 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                 // called by sendOrderedBroadcast, not by sendBroadcast.
                 // broadcastServiceTaskCompletion(intent.getExtras()); <- not
                 // anymore
-                this.setResultCode(Activity.RESULT_OK);
+                if (this.isOrderedBroadcast())
+                    this.setResultCode(Activity.RESULT_OK);
             }
         }
     }

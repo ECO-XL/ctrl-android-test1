@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content" >
+
+    <PreferenceCategory android:title="General" >
+        <EditTextPreference
+            android:key="title"
+            android:maxLines="2"
+            android:selectAllOnFocus="true"
+            android:singleLine="true"
+            android:summary="Enter title for this Base"
+            android:title="New Base" />
+
+        <ListPreference
+            android:dialogTitle="Choose Base type"
+            android:entries="@array/pref_base_type_titles"
+            android:entryValues="@array/pref_base_type_values"
+            android:key="base_type"
+            android:title="Base Type" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="Dangerous Stuff" >
+        <Preference
+            android:key="delete"
+            android:maxLines="2"
+            android:summary="Delete all data and settings stored on this device for this Base"
+            android:title="Delete Base from this device" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

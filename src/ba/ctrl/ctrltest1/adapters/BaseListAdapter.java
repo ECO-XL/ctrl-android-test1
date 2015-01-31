@@ -96,13 +96,12 @@ public class BaseListAdapter extends ArrayAdapter<Base> {
             view_holder = (ViewHolder) view.getTag();
         }
 
-        view_holder.base_connection_status.setBackgroundColor(base.getStatusColor());
+        view_holder.base_connection_status.setBackgroundColor(base.getStatusColor(context));
         view_holder.base_icon.setImageResource(base.getBaseIconRID(context));
         view_holder.base_title.setText(base.getTitle());
-        view_holder.base_display_data.setText(base.getDisplayData());
-        //view_holder.base_stamp.setBackgroundColor(base.getStatusColor());
+        view_holder.base_display_data.setText(base.getDisplayData(context));
         view_holder.base_stamp.setText(DateUtils.getRelativeTimeSpanString(base.getStamp(), System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_RELATIVE));
-        view_holder.base_type.setText(base.getBaseTypeTitle());
+        view_holder.base_type.setText(base.getBaseTypeTitle(context));
 
         int unseenCount = dataSource.getUnseenCount(base.getBaseid());
         if (unseenCount > 0) {
