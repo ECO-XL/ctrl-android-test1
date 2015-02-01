@@ -20,6 +20,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.security.cert.CertificateException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -32,6 +33,8 @@ import org.json.JSONObject;
 
 import ba.ctrl.ctrltest1.CommonStuff;
 import ba.ctrl.ctrltest1.R;
+import ba.ctrl.ctrltest1.bases.Base;
+import ba.ctrl.ctrltest1.bases.BaseDataParserInterface;
 import ba.ctrl.ctrltest1.database.DataSource;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
@@ -143,6 +146,10 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
     // The way service has been started. It can be taken over by "normal" method
     // at any time if started by GCM notification
     private boolean serviceStartNormalMethod = false;
+
+    // Once we find a BaseDataParser class for certain BaseId we will cache it
+    // here so we don't seek for it every time we need to execute it
+    private HashMap<String, BaseDataParserInterface> baseDataParserClasses = new HashMap<String, BaseDataParserInterface>();
 
     @Override
     public void onCreate() {
@@ -460,6 +467,37 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
         ctrlThreadTask = ThreadTasks.CLOSE;
     }
 
+    @SuppressWarnings("unchecked")
+    private void findAndCacheDataParserClass(String baseId) {
+        Base b = dataSource.getBase(baseId);
+        String cname = context.getPackageName() + ".bases.b" + b.getBaseType() + ".BaseDataParser";
+        Class<? extends BaseDataParserInterface> c = null;
+        if (cname != null) {
+            try {
+                c = (Class<? extends BaseDataParserInterface>) Class.forName(cname);
+            }
+            catch (ClassNotFoundException e) {
+                Log.e(TAG, "Looking for BaseDataParser Class (" + cname + "), not found: " + e.getMessage());
+            }
+            catch (Exception e) {
+                Log.e(TAG, "Looking for BaseDataParser Class Error: " + e.getMessage());
+            }
+        }
+
+        if (c != null) {
+            try {
+                // Add instance to the list that we can use now and later on
+                baseDataParserClasses.put(baseId, c.newInstance());
+            }
+            catch (InstantiationException e) {
+                e.printStackTrace();
+            }
+            catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     /**
      * ctrlSocket receiver function. When socket receives message from Server, this function is called.
      * 
@@ -590,8 +628,21 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                         dataSource.saveBaseConnectedStatus(context, data.getString("baseid"), data.getBoolean("connected"));
                                         broadcastNewBaseConnectionStatus(data.getString("baseid"), data.getBoolean("connected"));
 
-                                        // TODO: maybe the same thing like
-                                        // bellow for new data arrival...
+                                        // TODO: lets assume that Activity is
+                                        // not currently visible
+                                        if (true) {
+                                            if (!baseDataParserClasses.containsKey(data.getString("baseid"))) {
+                                                findAndCacheDataParserClass(data.getString("baseid"));
+                                            }
+
+                                            // If we successfully added it to
+                                            // the list or it already existed,
+                                            // lets call it and we are done here
+                                            if (baseDataParserClasses.containsKey(data.getString("baseid"))) {
+                                                BaseDataParserInterface bdpi = baseDataParserClasses.get(data.getString("baseid"));
+                                                bdpi.doParse(context, data.getString("baseid"), null, (lastConnectedState != data.getBoolean("connected")), data.getBoolean("connected"));
+                                            }
+                                        }
                                     }
                                 }
                                 catch (JSONException e) {
@@ -630,6 +681,23 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                 // get instant notification/alarm about it...
                                 // Long day... I am going to sleep and not even
                                 // read what I just wrote above.
+
+                                // TODO: lets assume that Activity is not
+                                // currently visible
+                                if (true) {
+                                    if (!baseDataParserClasses.containsKey(msg.getBaseIds().get(0))) {
+                                        findAndCacheDataParserClass(msg.getBaseIds().get(0));
+                                    }
+
+                                    // If we successfully added it to the list
+                                    // or it already existed, lets call it and
+                                    // we are done here
+                                    if (baseDataParserClasses.containsKey(msg.getBaseIds().get(0))) {
+                                        BaseDataParserInterface bdpi = baseDataParserClasses.get(msg.getBaseIds().get(0));
+                                        bdpi.doParse(context, msg.getBaseIds().get(0), msg.getData().toString(), false, false);
+                                    }
+                                }
+
                             }
                         }
                     }

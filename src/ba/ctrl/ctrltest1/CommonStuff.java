@@ -13,6 +13,8 @@ import android.util.Log;
 public class CommonStuff {
     private final static String TAG = "CommonStuff";
 
+    public final static int CTRL_NOTIFICATION_ID = 623487642; // whatever?
+    
     // default CTRL server
     public final static int CTRL_SERVER_DEFAULT_PORT = 9001;
     public final static String CTRL_DEFAULT_SERVER = "ctrl.ba";

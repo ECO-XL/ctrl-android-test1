@@ -201,8 +201,8 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
         ActionBar actionBar = getActionBar();
         actionBar.setSubtitle("Connected");
 
-        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.cancel(GcmBroadcastReceiver.CTRL_NOTIFICATION_ID);
+        //NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        //notificationManager.cancel(GcmBroadcastReceiver.CTRL_NOTIFICATION_ID);
     }
 
     @Override

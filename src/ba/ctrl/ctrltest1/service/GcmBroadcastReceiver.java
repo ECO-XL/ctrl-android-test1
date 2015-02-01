@@ -1,7 +1,6 @@
 package ba.ctrl.ctrltest1.service;
 
 import com.google.android.gms.gcm.GoogleCloudMessaging;
-import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -11,9 +10,6 @@ import android.widget.Toast;
 
 public class GcmBroadcastReceiver extends WakefulBroadcastReceiver {
     private static final String TAG = "GcmBroadcastReceiver";
-
-    public static final int CTRL_NOTIFICATION_ID = 1234567890;
-    NotificationManager mNotificationManager;
 
     // for sendBroadcast() to any listening activiti(es)
     public static final String GCMRECEIVER_RESPONSE = "ba.ctrl.ctrltest1.intent.action.GCMRECEIVER_RESPONSE";
@@ -43,36 +39,6 @@ public class GcmBroadcastReceiver extends WakefulBroadcastReceiver {
         }
 
         Log.i(TAG, "GcmBroadcastReceiver.onReceive():" + extras);
-
-        /*
-                String title = "";
-                String content = "";
-                if ("onBaseStatusChange".equals(extras.getString("why"))) {
-                    title = "Base Status";
-                    if ("true".equals(extras.getString("connected")))
-                        content = "Base is now online!";
-                    else
-                        content = "Base just went offline.";
-                }
-                else if ("onBaseMessage".equals(extras.getString("why"))) {
-                    title = "Base Message";
-                    content = "Service inserts into DB, and calls class to parse and alert if required...";
-                }
-
-                mNotificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-                showNotification(context, "CTRL", title, content);
-                // TEST
-                private void showNotification(Context context, String ticker, String title, String content) {
-                    // This is who should be launched if the user selects our notification.
-                    Intent contentIntent = new Intent();
-
-                    Notification n = new Notification(R.drawable.ic_launcher, ticker, System.currentTimeMillis());
-                    PendingIntent appIntent = PendingIntent.getActivity(context, 0, contentIntent, 0);
-                    n.setLatestEventInfo(context, title, content, appIntent);
-
-                    mNotificationManager.notify(CTRL_NOTIFICATION_ID, n);
-                }
-        */
 
         // If this is a tickle notification, start the service and let it do
         // it's job

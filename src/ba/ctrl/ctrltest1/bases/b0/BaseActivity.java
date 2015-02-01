@@ -1,5 +1,7 @@
 package ba.ctrl.ctrltest1.bases.b0;
 
+import java.util.ArrayList;
+
 import ba.ctrl.ctrltest1.R;
 import ba.ctrl.ctrltest1.bases.Base;
 import ba.ctrl.ctrltest1.bases.BaseSettingsActivity;
@@ -32,7 +34,7 @@ public class BaseActivity extends BaseTemplateActivity {
         context = super.getApplicationContext();
 
         /* IMPLEMENTATION OF THIS BASE TYPE 0 : */
-        
+
         final SeekBar seekBar = (SeekBar) findViewById(R.id.seekBar1);
 
         ((Button) findViewById(R.id.button1)).setOnClickListener(new View.OnClickListener() {
@@ -91,6 +93,10 @@ public class BaseActivity extends BaseTemplateActivity {
         intSer.putExtra(CtrlService.BC_SERVICE_TASKS_KEY, CtrlService.BC_SERVICE_TASKS_SEND_DATA);
         intSer.putExtra("isNotification", checkBox.isChecked());
         intSer.putExtra("sendData", String.valueOf(val));
+        // lets target just this Base...
+        ArrayList<String> baseIds = new ArrayList<String>();
+        baseIds.add(base.getBaseid());
+        intSer.putExtra("baseIds", baseIds);
         try {
             context.sendBroadcast(intSer);
         }

@@ -6,7 +6,6 @@ import ba.ctrl.ctrltest1.database.DataSource;
 import ba.ctrl.ctrltest1.service.BaseEventReceiver;
 import ba.ctrl.ctrltest1.service.BaseEventReceiverCallbacks;
 import ba.ctrl.ctrltest1.service.CtrlService;
-import ba.ctrl.ctrltest1.service.GcmBroadcastReceiver;
 import ba.ctrl.ctrltest1.service.ServicePingerAlarmReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiverCallbacks;
@@ -18,7 +17,6 @@ import android.os.Bundle;
 import android.app.ActionBar;
 import android.app.AlarmManager;
 import android.app.ListActivity;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -248,8 +246,8 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
         ActionBar actionBar = getActionBar();
         actionBar.setSubtitle("Connected");
 
-        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        notificationManager.cancel(GcmBroadcastReceiver.CTRL_NOTIFICATION_ID);
+        //NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
+        //notificationManager.cancel(GcmBroadcastReceiver.CTRL_NOTIFICATION_ID);
     }
 
     @Override
