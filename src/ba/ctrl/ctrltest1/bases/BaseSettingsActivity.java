@@ -3,7 +3,6 @@ package ba.ctrl.ctrltest1.bases;
 import android.app.ActionBar;
 import android.app.AlarmManager;
 import android.app.AlertDialog;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -25,18 +24,10 @@ import ba.ctrl.ctrltest1.CommonStuff;
 import ba.ctrl.ctrltest1.R;
 import ba.ctrl.ctrltest1.database.DataSource;
 import ba.ctrl.ctrltest1.service.CtrlService;
-import ba.ctrl.ctrltest1.service.GcmBroadcastReceiver;
 import ba.ctrl.ctrltest1.service.ServicePingerAlarmReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiverCallbacks;
 
-/*
- * There is a little bug with this Activity. For example, when you change a title of some Base
- * and then go back to change title of another base, you get title of previous Base in popup dialog.
- * This is because each Base Title gets saved to SharedPreferences also and that's where it gets
- * loaded from when user clicks to edit some value. This is the same for Lists (Base Types). 
- * It is just annoying and should be fixed somehow...
- * */
 public class BaseSettingsActivity extends PreferenceActivity implements OnPreferenceClickListener, OnPreferenceChangeListener, ServiceStatusReceiverCallbacks {
     private static final String TAG = "BaseSettingsActivity";
 
@@ -93,6 +84,10 @@ public class BaseSettingsActivity extends PreferenceActivity implements OnPrefer
         ((EditTextPreference) findPreference("title")).setOnPreferenceChangeListener(this);
         ((ListPreference) findPreference("base_type")).setOnPreferenceChangeListener(this);
 
+        // lets catch these clicks also to load actual value from SQLite instead
+        // of SharedPreferences
+        ((EditTextPreference) findPreference("title")).setOnPreferenceClickListener(this);
+        ((ListPreference) findPreference("base_type")).setOnPreferenceClickListener(this);
         // yep, this is a special case
         ((Preference) findPreference("delete")).setOnPreferenceClickListener(this);
     }
@@ -185,7 +180,7 @@ public class BaseSettingsActivity extends PreferenceActivity implements OnPrefer
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         if (newValue == null)
-            return true;
+            return false;
 
         String key = preference.getKey();
         String sNewVal = newValue.toString();
@@ -207,9 +202,12 @@ public class BaseSettingsActivity extends PreferenceActivity implements OnPrefer
             preference.setSummary(sNewVal);
         }
 
-        return true;
+        // false = don't store it in SharedPreferences... we are actually using
+        // SQLite to store these settings.
+        return false;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public boolean onPreferenceClick(Preference p) {
         String key = p.getKey();
@@ -232,6 +230,17 @@ public class BaseSettingsActivity extends PreferenceActivity implements OnPrefer
             });
             editorDialog = editor_builder.create();
             editorDialog.show();
+            return true;
+        }
+        else if ("title".equals(key)) {
+            EditTextPreference editTextPreference = (EditTextPreference) this.findPreference(key);
+            editTextPreference.setText(base.getTitle());
+            return true;
+        }
+        else if ("base_type".equals(key)) {
+            ListPreference listPreference = (ListPreference) this.findPreference(key);
+            int index = Integer.valueOf(base.getBaseType());
+            listPreference.setValueIndex(index);
             return true;
         }
 
@@ -260,8 +269,9 @@ public class BaseSettingsActivity extends PreferenceActivity implements OnPrefer
         ActionBar actionBar = getActionBar();
         actionBar.setSubtitle("Connected");
 
-        //NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        //notificationManager.cancel(GcmBroadcastReceiver.CTRL_NOTIFICATION_ID);
+        // NotificationManager notificationManager = (NotificationManager)
+        // context.getSystemService(Context.NOTIFICATION_SERVICE);
+        // notificationManager.cancel(GcmBroadcastReceiver.CTRL_NOTIFICATION_ID);
     }
 
     @Override

@@ -7,14 +7,12 @@ import com.google.zxing.integration.android.IntentResult;
 
 import ba.ctrl.ctrltest1.database.DataSource;
 import ba.ctrl.ctrltest1.service.CtrlService;
-import ba.ctrl.ctrltest1.service.GcmBroadcastReceiver;
 import ba.ctrl.ctrltest1.service.ServicePingerAlarmReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiverCallbacks;
 import android.app.ActionBar;
 import android.app.AlarmManager;
 import android.app.AlertDialog;
-import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -86,9 +84,14 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
         ((EditTextPreference) findPreference("ctrl_server_port")).setOnPreferenceChangeListener(this);
         ((EditTextPreference) findPreference("auth_token")).setOnPreferenceChangeListener(this);
 
+        // lets handle even these since we are not storing anything to
+        // SharedPreferences but we are using SQLite
+        ((EditTextPreference) findPreference("ctrl_server")).setOnPreferenceClickListener(this);
+        ((EditTextPreference) findPreference("ctrl_server_port")).setOnPreferenceClickListener(this);
+        ((EditTextPreference) findPreference("auth_token")).setOnPreferenceClickListener(this);
         // yep, this is a special case
-        ((Preference) findPreference("gcm_rereg")).setOnPreferenceClickListener(this);
         ((Preference) findPreference("auth_token_scan")).setOnPreferenceClickListener(this);
+        ((Preference) findPreference("gcm_rereg")).setOnPreferenceClickListener(this);
     }
 
     @Override
@@ -171,7 +174,7 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
     @Override
     public boolean onPreferenceChange(Preference preference, Object newValue) {
         if (newValue == null)
-            return true;
+            return false;
 
         String key = preference.getKey();
         String sNewVal = newValue.toString();
@@ -192,9 +195,12 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
             preference.setSummary(sNewVal);
         }
 
-        return true;
+        // false = don't store it in SharedPreferences... we are actually using
+        // SQLite to store these settings.
+        return false;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public boolean onPreferenceClick(Preference p) {
         String key = p.getKey();
@@ -203,10 +209,27 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
             IntentIntegrator scanIntegrator = new IntentIntegrator(CtrlSettingsActivity.this);
             scanIntegrator.setSingleTargetApplication("com.google.zxing.client.android");
             scanIntegrator.initiateScan();
+            return true;
         }
         else if ("gcm_rereg".equals(key)) {
             CommonStuff.serviceTaskGcmRereg(context);
             toaster("Done.");
+            return true;
+        }
+        else if ("ctrl_server".equals(key)) {
+            EditTextPreference editTextPreference = (EditTextPreference) this.findPreference(key);
+            editTextPreference.setText(dataSource.getPubVar(key, CommonStuff.CTRL_DEFAULT_SERVER));
+            return true;
+        }
+        else if ("ctrl_server_port".equals(key)) {
+            EditTextPreference editTextPreference = (EditTextPreference) this.findPreference(key);
+            editTextPreference.setText(dataSource.getPubVar(key, String.valueOf(CommonStuff.CTRL_SERVER_DEFAULT_PORT)));
+            return true;
+        }
+        else if ("auth_token".equals(key)) {
+            EditTextPreference editTextPreference = (EditTextPreference) this.findPreference(key);
+            editTextPreference.setText(dataSource.getPubVar(key));
+            return true;
         }
 
         return false;
@@ -254,8 +277,9 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
         ActionBar actionBar = getActionBar();
         actionBar.setSubtitle("Connected");
 
-        //NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        //notificationManager.cancel(GcmBroadcastReceiver.CTRL_NOTIFICATION_ID);
+        // NotificationManager notificationManager = (NotificationManager)
+        // context.getSystemService(Context.NOTIFICATION_SERVICE);
+        // notificationManager.cancel(GcmBroadcastReceiver.CTRL_NOTIFICATION_ID);
     }
 
     @Override

@@ -3,6 +3,7 @@ package ba.ctrl.ctrltest1.bases;
 import ba.ctrl.ctrltest1.R;
 import android.content.Context;
 import android.util.Log;
+import android.util.SparseArray;
 
 public class Base {
     private final static String TAG = "Base";
@@ -84,43 +85,144 @@ public class Base {
         this.stamp = stamp;
     }
 
+    /*
+     * Parses data that was received by this Base by calling the Display Data Parser class for this Base.
+     * If "cache" is not null it will cache the class for later use once it finds it.
+     * */
     @SuppressWarnings("unchecked")
-    public String getDisplayData(Context context) {
-        if (displayDataParserClass == null) {
-            String cname = context.getPackageName() + ".bases.b" + this.baseType + ".DisplayDataParser";
-            Class<? extends DisplayDataParserInterface> c = null;
-            if (cname != null) {
-                try {
-                    c = (Class<? extends DisplayDataParserInterface>) Class.forName(cname);
-                }
-                catch (ClassNotFoundException e) {
-                    Log.e(TAG, "Looking for DisplayDataParser Class (" + cname + "), not found: " + e.getMessage());
-                }
-                catch (Exception e) {
-                    Log.e(TAG, "Looking for DisplayDataParser Class Error: " + e.getMessage());
-                }
-            }
+    public String getDisplayData(Context context, SparseArray<Class<? extends DisplayDataParserInterface>> cache) {
+        displayData = "";
 
-            if (c != null) {
-                try {
-                    this.displayDataParserClass = c.newInstance();
-                }
-                catch (InstantiationException e) {
-                    e.printStackTrace();
-                }
-                catch (IllegalAccessException e) {
-                    e.printStackTrace();
-                }
-            }
+        // If class is already found in this Base class instance, simply call
+        // parser and return the value
+        if (displayDataParserClass != null) {
+            displayData = displayDataParserClass.doParse(context, this);
+            Log.i(TAG, "using local cached instance for parser");
+            return displayData;
         }
 
-        if( displayDataParserClass != null )
-        {
-            displayData = displayDataParserClass.doParse(context, this);
+        // If cache storage is provided and class is already cached and found in
+        // there call the parser and return value
+        if (cache != null && cache.get(baseType) != null) {
+            Class<? extends DisplayDataParserInterface> ddpi = cache.get(baseType);
+            try {
+                displayDataParserClass = ddpi.newInstance();
+                displayData = displayDataParserClass.doParse(context, this);
+                Log.i(TAG, "using provided-cache cached class for parser");
+            }
+            catch (InstantiationException e) {
+                e.printStackTrace();
+            }
+            catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+            return displayData;
+        }
+
+        // Since we got to here, it means we don't have class already found and
+        // we don't have it in cache. Time to find it and cache if caching is
+        // used.
+        String cname = context.getPackageName() + ".bases.b" + this.baseType + ".DisplayDataParser";
+        Class<? extends DisplayDataParserInterface> c = null;
+        if (cname != null) {
+            try {
+                c = (Class<? extends DisplayDataParserInterface>) Class.forName(cname);
+                Log.i(TAG, "found and cached parser");
+            }
+            catch (ClassNotFoundException e) {
+                Log.e(TAG, "Looking for DisplayDataParser Class (" + cname + "), not found: " + e.getMessage());
+            }
+            catch (Exception e) {
+                Log.e(TAG, "Looking for DisplayDataParser Class Error: " + e.getMessage());
+            }
+        }
+        if (c != null) {
+            try {
+                // If caching is used, cache it!
+                if (cache != null) {
+                    cache.put(baseType, c);
+                }
+                displayDataParserClass = c.newInstance();
+                displayData = displayDataParserClass.doParse(context, this);
+            }
+            catch (InstantiationException e) {
+                e.printStackTrace();
+            }
+            catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
         }
 
         return displayData;
     }
+
+    /*
+    public String getDisplayData(Context context, HashMap<Integer, Class<? extends DisplayDataParserInterface>> cache) {
+        displayData = "";
+
+        // If class is already found in this Base class instance, simply call
+        // parser and return the value
+        if (displayDataParserClass != null) {
+            displayData = displayDataParserClass.doParse(context, this);
+            Log.i(TAG, "using local cached instance for parser");
+            return displayData;
+        }
+
+        // If cache storage is provided and class is already cached and found in
+        // there call the parser and return value
+        if (cache != null && cache.containsKey(baseType)) {
+            Class<? extends DisplayDataParserInterface> ddpi = cache.get(baseType);
+            try {
+                displayDataParserClass = ddpi.newInstance();
+                displayData = displayDataParserClass.doParse(context, this);
+                Log.i(TAG, "using provided-cache cached class for parser");
+            }
+            catch (InstantiationException e) {
+                e.printStackTrace();
+            }
+            catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+            return displayData;
+        }
+
+        // Since we got to here, it means we don't have class already found and
+        // we don't have it in cache. Time to find it and cache if caching is
+        // used.
+        String cname = context.getPackageName() + ".bases.b" + this.baseType + ".DisplayDataParser";
+        Class<? extends DisplayDataParserInterface> c = null;
+        if (cname != null) {
+            try {
+                c = (Class<? extends DisplayDataParserInterface>) Class.forName(cname);
+                Log.i(TAG, "found and cached parser");
+            }
+            catch (ClassNotFoundException e) {
+                Log.e(TAG, "Looking for DisplayDataParser Class (" + cname + "), not found: " + e.getMessage());
+            }
+            catch (Exception e) {
+                Log.e(TAG, "Looking for DisplayDataParser Class Error: " + e.getMessage());
+            }
+        }
+        if (c != null) {
+            try {
+                // If caching is used, cache it!
+                if (cache != null) {
+                    cache.put(baseType, c);
+                }
+                displayDataParserClass = c.newInstance();
+                displayData = displayDataParserClass.doParse(context, this);
+            }
+            catch (InstantiationException e) {
+                e.printStackTrace();
+            }
+            catch (IllegalAccessException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return displayData;
+    }
+    */
 
     public void setDisplayData(String displayData) {
         this.displayData = displayData;

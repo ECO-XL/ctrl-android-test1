@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import android.content.Context;
 import android.text.format.DateUtils;
+import android.util.SparseArray;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +13,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import ba.ctrl.ctrltest1.R;
 import ba.ctrl.ctrltest1.bases.Base;
+import ba.ctrl.ctrltest1.bases.DisplayDataParserInterface;
 import ba.ctrl.ctrltest1.database.DataSource;
 
 public class BaseListAdapter extends ArrayAdapter<Base> {
@@ -36,6 +38,12 @@ public class BaseListAdapter extends ArrayAdapter<Base> {
     private final ArrayList<Base> bases;
 
     private DataSource dataSource;
+
+    // Caching DisplayDataParser classes to speed it up
+    // private HashMap<Integer, Class<? extends DisplayDataParserInterface>>
+    // displayDataParserClasses = new HashMap<Integer, Class<? extends
+    // DisplayDataParserInterface>>();
+    private SparseArray<Class<? extends DisplayDataParserInterface>> displayDataParserClasses = new SparseArray<Class<? extends DisplayDataParserInterface>>();
 
     /**************************************************************************
      * Constructors                                                           *
@@ -99,7 +107,7 @@ public class BaseListAdapter extends ArrayAdapter<Base> {
         view_holder.base_connection_status.setBackgroundColor(base.getStatusColor(context));
         view_holder.base_icon.setImageResource(base.getBaseIconRID(context));
         view_holder.base_title.setText(base.getTitle());
-        view_holder.base_display_data.setText(base.getDisplayData(context));
+        view_holder.base_display_data.setText(base.getDisplayData(context, displayDataParserClasses));
         view_holder.base_stamp.setText(DateUtils.getRelativeTimeSpanString(base.getStamp(), System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS, DateUtils.FORMAT_ABBREV_RELATIVE));
         view_holder.base_type.setText(base.getBaseTypeTitle(context));
 
