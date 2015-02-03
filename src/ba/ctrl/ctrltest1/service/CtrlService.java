@@ -149,12 +149,6 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
 
     // Once we find a BaseDataParser class for certain BaseId we will cache it
     // here so we don't seek for it every time we need to execute it
-    /*
-    private HashMap<String, BaseDataParserInterface> baseDataParserClasses = new HashMap<String, BaseDataParserInterface>();
-    */
-    /*
-    private HashMap<Integer, Class<? extends BaseDataParserInterface>> baseDataParserClasses = new HashMap<Integer, Class<? extends BaseDataParserInterface>>();
-    */
     private SparseArray<Class<? extends BaseDataParserInterface>> baseDataParserClasses = new SparseArray<Class<? extends BaseDataParserInterface>>();
 
     @Override
@@ -663,29 +657,18 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                         // TODO: lets assume that Activity is
                                         // not currently visible
                                         if (true) {
-                                            /*
-                                            if (!baseDataParserClasses.containsKey(data.getString("baseid"))) {
-                                                findAndCacheDataParserClass(data.getString("baseid"));
-                                            }
-
-                                            // If we successfully added it to
-                                            // the list or it already existed,
-                                            // lets call it and we are done here
-                                            if (baseDataParserClasses.containsKey(data.getString("baseid"))) {
-                                                BaseDataParserInterface bdpi = baseDataParserClasses.get(data.getString("baseid"));
-                                                bdpi.doParse(context, data.getString("baseid"), null, (lastConnectedState != data.getBoolean("connected")), data.getBoolean("connected"));
-                                            }
-                                            */
                                             Base b = dataSource.getBase(data.getString("baseid"));
                                             Class<? extends BaseDataParserInterface> bdpi = getDataParserClass(b.getBaseType());
-                                            try {
-                                                bdpi.newInstance().doParse(context, data.getString("baseid"), null, (lastConnectedState != data.getBoolean("connected")), data.getBoolean("connected"));
-                                            }
-                                            catch (InstantiationException e) {
-                                                e.printStackTrace();
-                                            }
-                                            catch (IllegalAccessException e) {
-                                                e.printStackTrace();
+                                            if (bdpi != null) {
+                                                try {
+                                                    bdpi.newInstance().doParse(context, data.getString("baseid"), null, (lastConnectedState != data.getBoolean("connected")), data.getBoolean("connected"));
+                                                }
+                                                catch (InstantiationException e) {
+                                                    e.printStackTrace();
+                                                }
+                                                catch (IllegalAccessException e) {
+                                                    e.printStackTrace();
+                                                }
                                             }
                                         }
                                     }
@@ -730,29 +713,18 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                 // TODO: lets assume that Activity is not
                                 // currently visible
                                 if (true) {
-                                    /*
-                                    if (!baseDataParserClasses.containsKey(msg.getBaseIds().get(0))) {
-                                        findAndCacheDataParserClass(msg.getBaseIds().get(0));
-                                    }
-
-                                    // If we successfully added it to the list
-                                    // or it already existed, lets call it and
-                                    // we are done here
-                                    if (baseDataParserClasses.containsKey(msg.getBaseIds().get(0))) {
-                                        BaseDataParserInterface bdpi = baseDataParserClasses.get(msg.getBaseIds().get(0));
-                                        bdpi.doParse(context, msg.getBaseIds().get(0), msg.getData().toString(), false, false);
-                                    }
-                                    */
                                     Base b = dataSource.getBase(msg.getBaseIds().get(0));
                                     Class<? extends BaseDataParserInterface> bdpi = getDataParserClass(b.getBaseType());
-                                    try {
-                                        bdpi.newInstance().doParse(context, msg.getBaseIds().get(0), msg.getData().toString(), false, false);
-                                    }
-                                    catch (InstantiationException e) {
-                                        e.printStackTrace();
-                                    }
-                                    catch (IllegalAccessException e) {
-                                        e.printStackTrace();
+                                    if (bdpi != null) {
+                                        try {
+                                            bdpi.newInstance().doParse(context, msg.getBaseIds().get(0), msg.getData().toString(), false, false);
+                                        }
+                                        catch (InstantiationException e) {
+                                            e.printStackTrace();
+                                        }
+                                        catch (IllegalAccessException e) {
+                                            e.printStackTrace();
+                                        }
                                     }
                                 }
 

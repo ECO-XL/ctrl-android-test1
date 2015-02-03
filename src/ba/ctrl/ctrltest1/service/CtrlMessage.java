@@ -94,7 +94,7 @@ public class CtrlMessage {
             isExtracted = false;
         }
     }
-    
+
     /**
      * Pack message and return as JSON String.
      * 
@@ -125,8 +125,10 @@ public class CtrlMessage {
         JSONObject msg = new JSONObject();
         try {
             msg.put("header", jHeader);
-            if (baseIds.size() > 0)
-                msg.put("baseid", baseIds);
+            if (baseIds.size() > 0) {
+                JSONArray b = new JSONArray(baseIds);
+                msg.put("baseid", b);
+            }
             msg.put("TXsender", TXsender);
             msg.put("data", data);
         }

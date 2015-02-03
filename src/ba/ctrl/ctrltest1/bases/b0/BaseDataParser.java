@@ -49,7 +49,7 @@ public class BaseDataParser implements BaseDataParserInterface {
 
     private void showNotification(Context context, String baseId, String contentTitle, String contentText) {
         NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(context);
-        mBuilder.setSmallIcon(R.drawable.ic_base_0);
+        mBuilder.setSmallIcon(R.drawable.ic_stat_logo);
         mBuilder.setContentTitle(contentTitle);
         mBuilder.setContentText(contentText);
 
