@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import ba.ctrl.ctrltest1.R;
 import ba.ctrl.ctrltest1.bases.Base;
 
 import android.content.ContentValues;

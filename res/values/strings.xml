@@ -20,8 +20,6 @@
         <item>2</item>
     </string-array>
 
-    <string name="new_base_title">New Base</string>
-
     <color name="base_connected_color">#7ed755</color>
     <color name="base_disconnected_color">#d05b5b</color>
     

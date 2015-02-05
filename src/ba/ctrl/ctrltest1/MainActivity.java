@@ -6,6 +6,7 @@ import ba.ctrl.ctrltest1.database.DataSource;
 import ba.ctrl.ctrltest1.service.BaseEventReceiver;
 import ba.ctrl.ctrltest1.service.BaseEventReceiverCallbacks;
 import ba.ctrl.ctrltest1.service.CtrlService;
+import ba.ctrl.ctrltest1.service.CtrlServiceContacter;
 import ba.ctrl.ctrltest1.service.ServicePingerAlarmReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiverCallbacks;
@@ -147,7 +148,7 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
         }
 
         // call this to update ActionBar Subtitle status
-        CommonStuff.serviceRequestStatus(context);
+        CtrlServiceContacter.taskRequestServiceStatus(context, null);
 
         // kreiraj ako ga nema, ili samo updejtaj sa novim podacima ako ga ima
         if (adapter == null) {
@@ -253,9 +254,6 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
     public void serviceConnectionRunning(Context context, Intent intent) {
         ActionBar actionBar = getActionBar();
         actionBar.setSubtitle("Connected");
-
-        //NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        //notificationManager.cancel(GcmBroadcastReceiver.CTRL_NOTIFICATION_ID);
     }
 
     @Override

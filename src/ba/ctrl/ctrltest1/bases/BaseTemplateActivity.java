@@ -6,12 +6,15 @@ import ba.ctrl.ctrltest1.database.DataSource;
 import ba.ctrl.ctrltest1.service.BaseEventReceiver;
 import ba.ctrl.ctrltest1.service.BaseEventReceiverCallbacks;
 import ba.ctrl.ctrltest1.service.CtrlService;
+import ba.ctrl.ctrltest1.service.CtrlServiceContacter;
+import ba.ctrl.ctrltest1.service.ForegroundCheckerReceiver;
 import ba.ctrl.ctrltest1.service.ServicePingerAlarmReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiverCallbacks;
 import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlarmManager;
+import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
@@ -117,7 +120,7 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
         }
 
         // call this to update ActionBar Subtitle status
-        CommonStuff.serviceRequestStatus(context);
+        CtrlServiceContacter.taskRequestServiceStatus(context, null);
 
         dataSource.markBaseDataSeen(base.getBaseid());
     }
@@ -205,6 +208,9 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
     public void serviceConnectionRunning(Context context, Intent intent) {
         ActionBar actionBar = getActionBar();
         actionBar.setSubtitle("Connected");
+
+        NotificationManager notificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+        notificationManager.cancel(base.getBaseid(), CommonStuff.CTRL_NOTIFICATION_ID);
     }
 
     @Override

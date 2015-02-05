@@ -7,6 +7,7 @@ import com.google.zxing.integration.android.IntentResult;
 
 import ba.ctrl.ctrltest1.database.DataSource;
 import ba.ctrl.ctrltest1.service.CtrlService;
+import ba.ctrl.ctrltest1.service.CtrlServiceContacter;
 import ba.ctrl.ctrltest1.service.ServicePingerAlarmReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiverCallbacks;
@@ -75,7 +76,7 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
 
         // Add summaries on startup
         setSummaryForEditTextPreference("ctrl_server", dataSource.getPubVar("ctrl_server", CommonStuff.CTRL_DEFAULT_SERVER));
-        setSummaryForEditTextPreference("ctrl_server_port", dataSource.getPubVar("ctrl_server_port", String.valueOf(CommonStuff.CTRL_SERVER_DEFAULT_PORT)));
+        setSummaryForEditTextPreference("ctrl_server_port", dataSource.getPubVar("ctrl_server_port", String.valueOf(CommonStuff.CTRL_DEFAULT_PORT)));
         if (!dataSource.getPubVar("auth_token").equals(""))
             setSummaryForEditTextPreference("auth_token", dataSource.getPubVar("auth_token"));
 
@@ -124,7 +125,7 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
         }
 
         // call this to update ActionBar Subtitle status
-        CommonStuff.serviceRequestStatus(context);
+        CtrlServiceContacter.taskRequestServiceStatus(context, null);
     }
 
     @Override
@@ -185,7 +186,7 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
         if ("auth_token".equals(key)) {
             toaster("Success, connecting...");
             actionBar.setSubtitle("Connecting...");
-            CommonStuff.serviceTaskRestart(context);
+            CtrlServiceContacter.taskRestart(context, null);
         }
 
         if (preference instanceof ListPreference) {
@@ -212,8 +213,16 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
             return true;
         }
         else if ("gcm_rereg".equals(key)) {
-            CommonStuff.serviceTaskGcmRereg(context);
-            toaster("Done.");
+            CtrlServiceContacter.taskGcmRereg(context, new CtrlServiceContacter.ContacterResponse() {
+                @Override
+                public void onResponse(boolean serviceReceived) {
+                    if (serviceReceived)
+                        toaster("Done.");
+                    else
+                        toaster("Service didn't respond, try again.");
+                }
+            });
+
             return true;
         }
         else if ("ctrl_server".equals(key)) {
@@ -223,7 +232,7 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
         }
         else if ("ctrl_server_port".equals(key)) {
             EditTextPreference editTextPreference = (EditTextPreference) this.findPreference(key);
-            editTextPreference.setText(dataSource.getPubVar(key, String.valueOf(CommonStuff.CTRL_SERVER_DEFAULT_PORT)));
+            editTextPreference.setText(dataSource.getPubVar(key, String.valueOf(CommonStuff.CTRL_DEFAULT_PORT)));
             return true;
         }
         else if ("auth_token".equals(key)) {
@@ -251,7 +260,7 @@ public class CtrlSettingsActivity extends PreferenceActivity implements OnPrefer
 
             toaster("Success! Connecting...");
             actionBar.setSubtitle("Connecting...");
-            CommonStuff.serviceTaskRestart(context);
+            CtrlServiceContacter.taskRestart(context, null);
         }
     }
 

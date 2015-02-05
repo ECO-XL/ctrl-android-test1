@@ -22,6 +22,7 @@ public class CtrlMessage {
     private boolean isOutOfSync = false;
     private boolean isNotification = false;
     private boolean isBackoff = false;
+    private boolean isSaveTXserver = false;
     // BaseID list
     private ArrayList<String> baseIds = new ArrayList<String>();
     // TXsender
@@ -38,7 +39,7 @@ public class CtrlMessage {
             JSONObject msg = new JSONObject(message);
 
             // Header
-            isSync = isAck = isSystemMessage = isProcessed = isOutOfSync = isNotification = isBackoff = false;
+            isSync = isAck = isSystemMessage = isProcessed = isOutOfSync = isNotification = isBackoff = isSaveTXserver = false;
             if (msg.has("header")) {
                 JSONObject header = msg.getJSONObject("header");
                 if (header.has("sync") && !header.isNull("sync") && header.getBoolean("sync")) {
@@ -61,6 +62,9 @@ public class CtrlMessage {
                 }
                 if (header.has("backoff") && !header.isNull("backoff") && header.getBoolean("backoff")) {
                     isBackoff = true;
+                }
+                if (header.has("save_txserver") && !header.isNull("save_txserver") && header.getBoolean("save_txserver")) {
+                    isSaveTXserver = true;
                 }
             }
 
@@ -117,6 +121,8 @@ public class CtrlMessage {
                 jHeader.put("notification", isNotification);
             if (isBackoff)
                 jHeader.put("backoff", isBackoff);
+            if (isSaveTXserver)
+                jHeader.put("save_txserver", isSaveTXserver);
         }
         catch (JSONException e) {
             e.printStackTrace();
@@ -225,6 +231,14 @@ public class CtrlMessage {
 
     public boolean getIsExtracted() {
         return isExtracted;
+    }
+
+    public boolean getIsSaveTXserver() {
+        return isSaveTXserver;
+    }
+
+    public void setIsSaveTXserver(boolean isSaveTXserver) {
+        this.isSaveTXserver = isSaveTXserver;
     }
 
 }

@@ -6,7 +6,7 @@ import ba.ctrl.ctrltest1.R;
 import ba.ctrl.ctrltest1.bases.Base;
 import ba.ctrl.ctrltest1.bases.BaseSettingsActivity;
 import ba.ctrl.ctrltest1.bases.BaseTemplateActivity;
-import ba.ctrl.ctrltest1.service.CtrlService;
+import ba.ctrl.ctrltest1.service.CtrlServiceContacter;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -17,9 +17,12 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.SeekBar;
+import android.widget.Toast;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 
 public class BaseActivity extends BaseTemplateActivity {
+    private static final String TAG = "b0.BaseActivity";
+
     private Base base;
 
     private Context context;
@@ -85,24 +88,21 @@ public class BaseActivity extends BaseTemplateActivity {
 
         short val = (short) (seekBar.getProgress() + 1000);
 
-        Log.i("BLABLA", "SEEKBAR: " + val);
+        Log.i(TAG, "SEEKBAR: " + val);
 
-        Intent intSer = new Intent();
-        intSer.setAction(CtrlService.BC_SERVICE_TASKS);
-        intSer.addCategory(Intent.CATEGORY_DEFAULT);
-        intSer.putExtra(CtrlService.BC_SERVICE_TASKS_KEY, CtrlService.BC_SERVICE_TASKS_SEND_DATA);
-        intSer.putExtra("isNotification", checkBox.isChecked());
-        intSer.putExtra("sendData", String.valueOf(val));
         // lets target just this Base...
         ArrayList<String> baseIds = new ArrayList<String>();
         baseIds.add(base.getBaseid());
-        intSer.putExtra("baseIds", baseIds);
-        try {
-            context.sendBroadcast(intSer);
-        }
-        catch (Exception e) {
-            // ajrror
-        }
+
+        // Send it man!
+        CtrlServiceContacter.taskSendData(context, String.valueOf(val), checkBox.isChecked(), baseIds, new CtrlServiceContacter.ContacterResponse() {
+            @Override
+            public void onResponse(boolean serviceReceived) {
+                if (!serviceReceived) {
+                    Toast.makeText(context, "Service didn't respond, try again!", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
     }
 
     @Override

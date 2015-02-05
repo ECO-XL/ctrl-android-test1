@@ -24,6 +24,7 @@ import ba.ctrl.ctrltest1.CommonStuff;
 import ba.ctrl.ctrltest1.R;
 import ba.ctrl.ctrltest1.database.DataSource;
 import ba.ctrl.ctrltest1.service.CtrlService;
+import ba.ctrl.ctrltest1.service.CtrlServiceContacter;
 import ba.ctrl.ctrltest1.service.ServicePingerAlarmReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiver;
 import ba.ctrl.ctrltest1.service.ServiceStatusReceiverCallbacks;
@@ -119,7 +120,7 @@ public class BaseSettingsActivity extends PreferenceActivity implements OnPrefer
         }
 
         // call this to update ActionBar Subtitle status
-        CommonStuff.serviceRequestStatus(context);
+        CtrlServiceContacter.taskRequestServiceStatus(context, null);
     }
 
     @Override

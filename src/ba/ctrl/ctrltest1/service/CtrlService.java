@@ -593,7 +593,20 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                 // lets ++
                                 TXserver++;
 
+                                // instead of saving TXserver value to our local
+                                // DB, we can also save it to Server!
+                                /*
                                 dataSource.savePubVar("TXserver", String.valueOf(TXserver));
+                                */
+                                JSONObject ooo = new JSONObject();
+                                try {
+                                    ooo.put("TXserver", TXserver);
+                                    msgAck.setData(ooo);
+                                    msgAck.setIsSaveTXserver(true);
+                                }
+                                catch (JSONException e) {
+                                    e.printStackTrace();
+                                }
                             }
 
                             sendSocket(msgAck.buildMessage());
@@ -634,7 +647,10 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                         dataSource.saveBaseConnectedStatus(context, data.getString("baseid"), data.getBoolean("connected"), data.getString("basename"));
                                         broadcastNewBaseConnectionStatus(data.getString("baseid"), data.getBoolean("connected"));
 
-                                        // Call appropriate BaseDataParser that will possibly show notifications and stuff if Activity for this BaseID is in background
+                                        // Call appropriate BaseDataParser that
+                                        // will possibly show notifications and
+                                        // stuff if Activity for this BaseID is
+                                        // in background
                                         callBaseDataParserWhenBackgrounded(data.getString("baseid"), null, (lastConnectedState != data.getBoolean("connected")), data.getBoolean("connected"));
                                     }
                                 }
@@ -650,7 +666,9 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                 dataSource.updateBaseLastActivity(msg.getBaseIds().get(0));
                                 broadcastNewBaseDataArrival(msg.getBaseIds().get(0));
 
-                                // Call appropriate BaseDataParser that will possibly show notifications and stuff if Activity for this BaseID is in background
+                                // Call appropriate BaseDataParser that will
+                                // possibly show notifications and stuff if
+                                // Activity for this BaseID is in background
                                 callBaseDataParserWhenBackgrounded(msg.getBaseIds().get(0), msg.getData().toString(), false, false);
                             }
                         }
@@ -666,7 +684,7 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                         if (msg.getData() instanceof JSONObject) {
                             JSONObject data = (JSONObject) msg.getData();
 
-                            if (data.has("type") && data.get("type") != null && data.getString("type").equals("authentication_response") && data.has("result") && data.get("result") != null) {
+                            if (data.has("type") && data.get("type") != null && data.getString("type").equals("authentication_response") && data.has("result") && data.get("result") != null && data.has("TXserver")) {
                                 // authorized?
                                 if (data.getInt("result") == 0) {
                                     ctrlAuthenticated = true;
@@ -675,11 +693,24 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                         TXserver = 0;
                                     }
                                     else {
+                                        // instead reading TXserver from local
+                                        // storage, we can now read the value
+                                        // Server sends us, because we are
+                                        // storing it on Server now:
+                                        // (Server-Stored TXServer value)
+                                        /*
                                         String sTXserver = dataSource.getPubVar("TXserver");
                                         try {
                                             TXserver = Integer.parseInt(sTXserver);
                                         }
                                         catch (NumberFormatException e) {
+                                            TXserver = 0;
+                                        }
+                                        */
+                                        try {
+                                            TXserver = data.getInt("TXserver");
+                                        }
+                                        catch (JSONException jse) {
                                             TXserver = 0;
                                         }
                                     }
@@ -724,14 +755,17 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
         }
     }
 
-    private void callBaseDataParserWhenBackgrounded(String baseId, String data, boolean connectedStateChanged, boolean connected) {
+    private void callBaseDataParserWhenBackgrounded(final String baseId, final String data, final boolean connectedStateChanged, final boolean connected) {
         Log.i(TAG, "callBaseDataParserWhenBackgrounded");
 
-        // Check if there is Activity for this Base in foreground. If not, call appropriate BaseDataParser that will possibly show notifications
+        // Check if there is Activity for this Base in foreground. If not, call
+        // appropriate BaseDataParser that will possibly show notifications
         Intent survIntent = new Intent();
         survIntent.setAction(BC_FOREGROUND_CHECKER);
         survIntent.putExtra(BC_FOREGROUND_CHECKER_BASEID, baseId);
-        // MainActivity will answer when BC_FOREGROUND_CHECKER_CONNSTATECHANGED is true, so that popups about base going online/offline don't show when user is looking at the app
+        // MainActivity will answer when BC_FOREGROUND_CHECKER_CONNSTATECHANGED
+        // is true, so that popups about base going online/offline don't show
+        // when user is looking at the app
         survIntent.putExtra(BC_FOREGROUND_CHECKER_CONNSTATECHANGED, connectedStateChanged);
         sendOrderedBroadcast(survIntent, null, new BroadcastReceiver() {
             @Override
@@ -777,7 +811,7 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
 
         // clearing this will force re-reg
         if (force)
-            regID = ""; // clear this so we always register to GCM
+            regID = ""; // clear this so we force registration to execute
 
         // Time to register for new regID with Google Play Services
         if (!String.valueOf(currAppVer).equals(appVer) || regID.equals("")) {
@@ -839,7 +873,7 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
 
                 int ctrlServerPort;
                 if (dataSource.getPubVar("ctrl_server_port").equals("")) {
-                    ctrlServerPort = CommonStuff.CTRL_SERVER_DEFAULT_PORT;
+                    ctrlServerPort = CommonStuff.CTRL_DEFAULT_PORT;
                 }
                 else {
                     ctrlServerPort = Integer.parseInt(dataSource.getPubVar("ctrl_server_port"));
