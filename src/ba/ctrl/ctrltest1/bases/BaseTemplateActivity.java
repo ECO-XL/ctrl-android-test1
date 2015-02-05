@@ -28,6 +28,7 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
 
     private ServiceStatusReceiver serviceStatusReceiver;
     private BaseEventReceiver baseEventReceiver;
+    private ForegroundCheckerReceiver foregroundCheckerReceiver;
 
     private int rLayoutName;
     private Base base;
@@ -94,6 +95,11 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
         filter2.addCategory(Intent.CATEGORY_DEFAULT);
         baseEventReceiver = new BaseEventReceiver(this);
         registerReceiver(baseEventReceiver, filter2);
+
+        IntentFilter filter3 = new IntentFilter(CtrlService.BC_FOREGROUND_CHECKER);
+        filter3.addCategory(Intent.CATEGORY_DEFAULT);
+        foregroundCheckerReceiver = new ForegroundCheckerReceiver(base.getBaseid(), false);
+        registerReceiver(foregroundCheckerReceiver, filter3);
 
         // Create AlarmManager to repeatedly "ping" the Service at 1/2 the rate
         // Service expects (because we are using inexact repeating alarm). Do
@@ -171,6 +177,7 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
         // Unregister receivers
         unregisterReceiver(serviceStatusReceiver);
         unregisterReceiver(baseEventReceiver);
+        unregisterReceiver(foregroundCheckerReceiver);
 
         super.onStop();
     }
@@ -198,9 +205,6 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
     public void serviceConnectionRunning(Context context, Intent intent) {
         ActionBar actionBar = getActionBar();
         actionBar.setSubtitle("Connected");
-
-        //NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        //notificationManager.cancel(GcmBroadcastReceiver.CTRL_NOTIFICATION_ID);
     }
 
     @Override

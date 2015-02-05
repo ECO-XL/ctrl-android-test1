@@ -57,6 +57,11 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
 
     public static final String BC_SERVICE_START_METHOD = "serviceStartNormalMethod";
 
+    // for checking if Base Activity is in foreground
+    public static final String BC_FOREGROUND_CHECKER = "ba.ctrl.ctrltest1.intent.action.BC_FOREGROUND_CHECKER";
+    public static final String BC_FOREGROUND_CHECKER_BASEID = BC_FOREGROUND_CHECKER + "_BASEID";
+    public static final String BC_FOREGROUND_CHECKER_CONNSTATECHANGED = BC_FOREGROUND_CHECKER + "_CONNSTATECHANGED";
+
     // for receiving broadcasts FROM activities
     public static final String BC_SERVICE_TASKS = "ba.ctrl.ctrltest1.intent.action.BC_SERVICE_TASKS";
     public static final String BC_SERVICE_TASKS_KEY = BC_SERVICE_TASKS + "_KEY";
@@ -338,7 +343,7 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
 
     /**
      * Main Service thread which keeps track on socket connection status - restarts when required or shuts them down when it is time to die.
-     * It also measures elapsed time from last ping we received from some Activity, in order to stop us if we don't receive next ping in ~3 seconds and have nothing pending to do. 
+     * It also measures elapsed time from last ping we received from some Activity, in order to stop us if we don't receive next ping in ~3 seconds and have nothing pending to do.
      */
     public class CtrlConnMaintainer implements Runnable {
         @Override
@@ -461,36 +466,11 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
     }
 
     /**
-     * Closing socket connection with CTRL Server. 
+     * Closing socket connection with CTRL Server.
      */
     private void closeCtrlSocket() {
         ctrlThreadTask = ThreadTasks.CLOSE;
     }
-
-    /*
-    @SuppressWarnings("unchecked")
-    private void findAndCacheDataParserClass(String baseId) {
-        Base b = dataSource.getBase(baseId);
-        String cname = context.getPackageName() + ".bases.b" + b.getBaseType() + ".BaseDataParser";
-        Class<? extends BaseDataParserInterface> c = null;
-        if (cname != null) {
-            try {
-                c = (Class<? extends BaseDataParserInterface>) Class.forName(cname);
-            }
-            catch (ClassNotFoundException e) {
-                Log.e(TAG, "Looking for BaseDataParser Class (" + cname + "), not found: " + e.getMessage());
-            }
-            catch (Exception e) {
-                Log.e(TAG, "Looking for BaseDataParser Class Error: " + e.getMessage());
-            }
-        }
-
-        if (c != null) {
-            // Add instance to the list that we can use now and later on
-            baseDataParserClasses.put(baseId, c.newInstance());
-        }
-    }
-    */
 
     /*
      * This function finds the appropriate DataParser class from previously cached classes list,
@@ -526,7 +506,7 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
 
     /**
      * ctrlSocket receiver function. When socket receives message from Server, this function is called.
-     * 
+     *
      * @param mServerMessage
      */
     private void recvSocket(String mServerMessage) {
@@ -635,7 +615,7 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                 JSONObject data = (JSONObject) msg.getData();
 
                                 try {
-                                    if (data.has("type") && data.getString("type").equals("base_connection_status") && data.has("connected") && data.has("baseid")) {
+                                    if (data.has("type") && data.getString("type").equals("base_connection_status") && data.has("connected") && data.has("baseid") && data.has("basename")) {
                                         // this is a Base status
                                         // notification, we get this for
                                         // each Base associated to our
@@ -651,26 +631,11 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                             dataSource.updateBaseLastActivity(data.getString("baseid"));
                                         }
 
-                                        dataSource.saveBaseConnectedStatus(context, data.getString("baseid"), data.getBoolean("connected"));
+                                        dataSource.saveBaseConnectedStatus(context, data.getString("baseid"), data.getBoolean("connected"), data.getString("basename"));
                                         broadcastNewBaseConnectionStatus(data.getString("baseid"), data.getBoolean("connected"));
 
-                                        // TODO: lets assume that Activity is
-                                        // not currently visible
-                                        if (true) {
-                                            Base b = dataSource.getBase(data.getString("baseid"));
-                                            Class<? extends BaseDataParserInterface> bdpi = getDataParserClass(b.getBaseType());
-                                            if (bdpi != null) {
-                                                try {
-                                                    bdpi.newInstance().doParse(context, data.getString("baseid"), null, (lastConnectedState != data.getBoolean("connected")), data.getBoolean("connected"));
-                                                }
-                                                catch (InstantiationException e) {
-                                                    e.printStackTrace();
-                                                }
-                                                catch (IllegalAccessException e) {
-                                                    e.printStackTrace();
-                                                }
-                                            }
-                                        }
+                                        // Call appropriate BaseDataParser that will possibly show notifications and stuff if Activity for this BaseID is in background
+                                        callBaseDataParserWhenBackgrounded(data.getString("baseid"), null, (lastConnectedState != data.getBoolean("connected")), data.getBoolean("connected"));
                                     }
                                 }
                                 catch (JSONException e) {
@@ -685,49 +650,8 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                                 dataSource.updateBaseLastActivity(msg.getBaseIds().get(0));
                                 broadcastNewBaseDataArrival(msg.getBaseIds().get(0));
 
-                                // TODO: if no activity for this BaseId is in
-                                // foreground (here is how to check:
-                                // http://www.mannaz.at/codebase/android-activity-foreground-surveillance/)
-                                // call a class that will parse all unseen and
-                                // unparsed received messages and process them
-                                // according to how user has set the alerts for
-                                // each Base that we received data from. We
-                                // might check if call to function above
-                                // "broadcastNewBaseDataArrival" was received by
-                                // some Activity and if not we call parser. If
-                                // it was received by an activity don't call
-                                // parser. That parser is also an "alerter" that
-                                // will show notifications and trigger alarms if
-                                // app is not in foreground. Hm, this means that
-                                // I will probably need to separate broadcasts
-                                // sent to MainActivity that lists Bases, and
-                                // those sent to the actual Activity for a
-                                // particular Base this data is for so that even
-                                // when looking at the screen when for example
-                                // temperature rises for some Base and user is
-                                // currently looking at another Base, he would
-                                // get instant notification/alarm about it...
-                                // Long day... I am going to sleep and not even
-                                // read what I just wrote above.
-
-                                // TODO: lets assume that Activity is not
-                                // currently visible
-                                if (true) {
-                                    Base b = dataSource.getBase(msg.getBaseIds().get(0));
-                                    Class<? extends BaseDataParserInterface> bdpi = getDataParserClass(b.getBaseType());
-                                    if (bdpi != null) {
-                                        try {
-                                            bdpi.newInstance().doParse(context, msg.getBaseIds().get(0), msg.getData().toString(), false, false);
-                                        }
-                                        catch (InstantiationException e) {
-                                            e.printStackTrace();
-                                        }
-                                        catch (IllegalAccessException e) {
-                                            e.printStackTrace();
-                                        }
-                                    }
-                                }
-
+                                // Call appropriate BaseDataParser that will possibly show notifications and stuff if Activity for this BaseID is in background
+                                callBaseDataParserWhenBackgrounded(msg.getBaseIds().get(0), msg.getData().toString(), false, false);
                             }
                         }
                     }
@@ -798,6 +722,46 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                 }
             }
         }
+    }
+
+    private void callBaseDataParserWhenBackgrounded(String baseId, String data, boolean connectedStateChanged, boolean connected) {
+        Log.i(TAG, "callBaseDataParserWhenBackgrounded");
+
+        // Check if there is Activity for this Base in foreground. If not, call appropriate BaseDataParser that will possibly show notifications
+        Intent survIntent = new Intent();
+        survIntent.setAction(BC_FOREGROUND_CHECKER);
+        survIntent.putExtra(BC_FOREGROUND_CHECKER_BASEID, baseId);
+        // MainActivity will answer when BC_FOREGROUND_CHECKER_CONNSTATECHANGED is true, so that popups about base going online/offline don't show when user is looking at the app
+        survIntent.putExtra(BC_FOREGROUND_CHECKER_CONNSTATECHANGED, connectedStateChanged);
+        sendOrderedBroadcast(survIntent, null, new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                int result = getResultCode();
+                // No activity in foreground
+                if (result == Activity.RESULT_CANCELED) {
+                    Log.i(TAG, "callBaseDataParserWhenBackgrounded, activity in BACKGROUND, calling parser class...");
+
+                    Base b = dataSource.getBase(baseId);
+                    Class<? extends BaseDataParserInterface> bdpi = getDataParserClass(b.getBaseType());
+                    if (bdpi != null) {
+                        try {
+                            bdpi.newInstance().doParse(context, baseId, data, connectedStateChanged, connected);
+                        }
+                        catch (InstantiationException e) {
+                            e.printStackTrace();
+                        }
+                        catch (IllegalAccessException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+                // Yep, activity is in foreground!
+                else {
+                    // Nothing here...
+                    Log.i(TAG, "callBaseDataParserWhenBackgrounded, activity in FOREGROUND!");
+                }
+            }
+        }, null, Activity.RESULT_CANCELED, null, null);
     }
 
     /**

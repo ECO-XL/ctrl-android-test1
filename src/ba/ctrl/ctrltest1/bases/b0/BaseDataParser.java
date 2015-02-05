@@ -31,7 +31,7 @@ public class BaseDataParser implements BaseDataParserInterface {
 
         // Custom stuff here...
 
-        // If this is a online/offline event (connected state changed)
+        // If this is an online/offline event (connected state changed)
         if (data == null) {
             if (connectedStateChanged) {
                 if (connected)

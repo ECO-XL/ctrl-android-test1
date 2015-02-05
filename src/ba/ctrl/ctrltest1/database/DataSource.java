@@ -110,11 +110,11 @@ public class DataSource {
 
     /**
      * This updates Base's current connection status if it exists in DB, else it inserts it into DB.
-     *  
+     *
      * @param baseId
      * @param connected
      */
-    public void saveBaseConnectedStatus(Context context, String baseId, boolean connected) {
+    public void saveBaseConnectedStatus(Context context, String baseId, boolean connected, String title) {
         if (baseId.equals(""))
             return;
 
@@ -141,7 +141,7 @@ public class DataSource {
             open();
             ContentValues values = new ContentValues();
             values.put("baseid", baseId);
-            values.put("title", context.getResources().getString(R.string.new_base_title));
+            values.put("title", title);
             values.put("connected", connected ? 1 : 0);
             values.put("stamp", System.currentTimeMillis());
             db.insert("base", null, values);
@@ -192,7 +192,7 @@ public class DataSource {
 
     /**
      * Used only for DEBUGING!
-     * 
+     *
      * @return
      */
     public String getLatestBaseDataBase(String baseId) {
@@ -227,7 +227,7 @@ public class DataSource {
 
     /**
      * Returns Base's connection status.
-     * 
+     *
      * @return true - online, false - offline.
      */
     public boolean getBaseStatus(String baseId) {
@@ -287,7 +287,7 @@ public class DataSource {
 
     /**
      * Adding jsonPackage to database which will be sent to Server ASAP.
-     * 
+     *
      * @param jsonPackage
      * @return
      */
@@ -317,7 +317,7 @@ public class DataSource {
     /**
      * Returns queueSize and acked in JSON Object.
      * Doesn't return information if item was actually acked in DB... We probably won't need it anyway.
-     * 
+     *
      * @param TXclient
      * @return
      * */
@@ -348,7 +348,7 @@ public class DataSource {
 
     /**
      * Counts all unacknowledged items from client2server DB.
-     * 
+     *
      * @return
      */
     public int countUnackedTxClient2Server() {
@@ -429,7 +429,7 @@ public class DataSource {
 
     /**
      * Get pubvar with default value on no-value from DB.
-     * 
+     *
      * @param key
      * @param defaultValue
      * @return
@@ -444,7 +444,7 @@ public class DataSource {
 
     /**
      * Get pubvar without default value. On no-value returns empty string.
-     * 
+     *
      * @param key
      * @return
      */
@@ -471,7 +471,7 @@ public class DataSource {
 
     /**
      * Saves pubvar value.
-     * 
+     *
      * @param key
      * @param val
      * @return
