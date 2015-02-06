@@ -114,7 +114,7 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
 
         IntentFilter filter2 = new IntentFilter(CtrlService.BC_BASE_EVENT);
         filter2.addCategory(Intent.CATEGORY_DEFAULT);
-        baseEventReceiver = new BaseEventReceiver(this);
+        baseEventReceiver = new BaseEventReceiver(this, null);
         registerReceiver(baseEventReceiver, filter2);
 
         IntentFilter filter3 = new IntentFilter(CtrlService.BC_FOREGROUND_CHECKER);
@@ -273,7 +273,7 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
     }
 
     @Override
-    public void baseNewDataArrival(String baseId) {
+    public void baseNewDataArrival(String baseId, String data) {
         refreshListView();
     }
 

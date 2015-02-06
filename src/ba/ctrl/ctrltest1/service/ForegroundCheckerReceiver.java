@@ -19,7 +19,7 @@ public class ForegroundCheckerReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        if ((intent.getStringExtra(CtrlService.BC_FOREGROUND_CHECKER_BASEID).equals(baseId) || intent.getBooleanExtra(CtrlService.BC_FOREGROUND_CHECKER_CONNSTATECHANGED, false) == answerToConnStateChangedOfAnyBase)) {
+        if ((intent.getStringExtra(CtrlService.BC_FOREGROUND_CHECKER_BASEID).equals(baseId) || intent.getBooleanExtra(CtrlService.BC_FOREGROUND_CHECKER_CONNSTATECHANGED, false) == true && answerToConnStateChangedOfAnyBase)) {
             if (this.isOrderedBroadcast()) {
                 this.setResultCode(Activity.RESULT_OK);
             }

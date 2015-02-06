@@ -6,12 +6,13 @@
     <string name="ctrl_settings_activity_name">Ctrl Settings</string>
     <string name="base_settings_activity_name">Base Settings</string>
     <string name="title_activity_base0">Generic Base</string>
+    <string name="title_activity_base1">Servo Experiment</string>
     <string name="action_settings">Settings</string>
 
     <!-- Preferences arrays -->
     <string-array name="pref_base_type_titles">
         <item>Generic Base</item>
-        <item>Servo Control</item>
+        <item>Servo Experiment</item>
         <item>Single Channel Switch</item>
     </string-array>
     <string-array name="pref_base_type_values">

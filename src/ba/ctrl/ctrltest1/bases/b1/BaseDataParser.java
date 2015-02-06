@@ -1,4 +1,4 @@
-package ba.ctrl.ctrltest1.bases.b0;
+package ba.ctrl.ctrltest1.bases.b1;
 
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -45,7 +45,8 @@ public class BaseDataParser implements BaseDataParserInterface {
         }
         // Nope, this is some new data arrived
         else {
-            showNotification(context, baseId, b.getTitle(), "New data arrived! Please choose Base Type in Settings to parse data properly.", false);
+            // Servo Experiment doesn't send any data, so this shouldn't
+            // execute...
         }
     }
 
@@ -62,7 +63,7 @@ public class BaseDataParser implements BaseDataParserInterface {
 
         mBuilder.setLights(Color.RED, 500, 500);
 
-        String cTargetName = context.getPackageName() + ".bases.b0.BaseActivity";
+        String cTargetName = context.getPackageName() + ".bases.b1.BaseActivity";
         Class<?> cTarget = null;
         try {
             cTarget = Class.forName(cTargetName);

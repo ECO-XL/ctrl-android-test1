@@ -44,7 +44,7 @@ public class CtrlServiceContacter {
     }
 
     /**
-     * Sending data to remote CTRL Base(s).
+     * Sending data to remote CTRL Base(s). Data is always sent as String. It will be converted to hexadecimal value based on US-ASCII charset.
      * 
      * @param context
      * @param hexData

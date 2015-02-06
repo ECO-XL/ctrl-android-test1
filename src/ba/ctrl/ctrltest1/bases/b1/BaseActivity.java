@@ -1,4 +1,4 @@
-package ba.ctrl.ctrltest1.bases.b0;
+package ba.ctrl.ctrltest1.bases.b1;
 
 import java.util.ArrayList;
 
@@ -10,16 +10,18 @@ import ba.ctrl.ctrltest1.service.CtrlServiceContacter;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
-import android.widget.EditText;
+import android.widget.SeekBar;
 import android.widget.Toast;
+import android.widget.SeekBar.OnSeekBarChangeListener;
 
 public class BaseActivity extends BaseTemplateActivity {
-    private static final String TAG = "b0.BaseActivity";
+    private static final String TAG = "b1.BaseActivity";
 
     private Base base;
 
@@ -27,7 +29,7 @@ public class BaseActivity extends BaseTemplateActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        super.setLayoutR(R.layout.b0_base_activity);
+        super.setLayoutR(R.layout.b1_base_activity);
         super.onCreate(savedInstanceState);
 
         base = super.getBase();
@@ -36,27 +38,38 @@ public class BaseActivity extends BaseTemplateActivity {
 
         /* IMPLEMENTATION OF THIS BASE TYPE 0 : */
 
-        final CheckBox ckSendAsNotification = (CheckBox) findViewById(R.id.ckSendAsNotification);
+        final SeekBar seekBar = (SeekBar) findViewById(R.id.seekBar1);
 
         ((Button) findViewById(R.id.btnSend)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                EditText txtSendData = (EditText) findViewById(R.id.txtSendData);
-                String val = txtSendData.getText().toString();
+                seekBar.setProgress(0);
+            }
+        });
 
-                // lets target just this Base...
-                ArrayList<String> baseIds = new ArrayList<String>();
-                baseIds.add(base.getBaseid());
+        ((Button) findViewById(R.id.button2)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                seekBar.setProgress(500);
+            }
+        });
 
-                // Send it man!
-                CtrlServiceContacter.taskSendData(context, val, ckSendAsNotification.isChecked(), baseIds, new CtrlServiceContacter.ContacterResponse() {
-                    @Override
-                    public void onResponse(boolean serviceReceived) {
-                        if (!serviceReceived) {
-                            Toast.makeText(context, "Service didn't respond, try again!", Toast.LENGTH_SHORT).show();
-                        }
-                    }
-                });
+        ((Button) findViewById(R.id.button3)).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                seekBar.setProgress(1000);
+            }
+        });
+
+        seekBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                sendCurrentSeekBarValue();
+            }
+
+            public void onStartTrackingTouch(SeekBar seekBar) {
+            }
+
+            public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
 
@@ -69,10 +82,33 @@ public class BaseActivity extends BaseTemplateActivity {
         }
     }
 
+    private void sendCurrentSeekBarValue() {
+        CheckBox checkBox = (CheckBox) findViewById(R.id.ckSendAsNotification);
+        SeekBar seekBar = (SeekBar) findViewById(R.id.seekBar1);
+
+        short val = (short) (seekBar.getProgress() + 1000);
+
+        Log.i(TAG, "SEEKBAR: " + val);
+
+        // lets target just this Base...
+        ArrayList<String> baseIds = new ArrayList<String>();
+        baseIds.add(base.getBaseid());
+
+        // Send it man!
+        CtrlServiceContacter.taskSendData(context, String.valueOf(val), checkBox.isChecked(), baseIds, new CtrlServiceContacter.ContacterResponse() {
+            @Override
+            public void onResponse(boolean serviceReceived) {
+                if (!serviceReceived) {
+                    Toast.makeText(context, "Service didn't respond, try again!", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
-        getMenuInflater().inflate(R.menu.b0_activity, menu);
+        getMenuInflater().inflate(R.menu.b1_activity, menu);
         return true;
     }
 
@@ -97,8 +133,6 @@ public class BaseActivity extends BaseTemplateActivity {
         super.getDataSource().markBaseDataSeen(base.getBaseid());
 
         // do sometihng about this new data arrival event
-        EditText rd = (EditText) findViewById(R.id.txtReceivedData);
-        rd.setText(data);
     }
 
     @Override

@@ -40,6 +40,9 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
 
     private int baseType;
 
+    private String ctrlConnectedSubtitle;
+    private boolean baseConnected = true;
+
     // For "pinging" the Service to keep it running
     private AlarmManager alarmMgr;
     private PendingIntent alarmIntent;
@@ -96,7 +99,7 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
 
         IntentFilter filter2 = new IntentFilter(CtrlService.BC_BASE_EVENT);
         filter2.addCategory(Intent.CATEGORY_DEFAULT);
-        baseEventReceiver = new BaseEventReceiver(this);
+        baseEventReceiver = new BaseEventReceiver(this, base.getBaseid());
         registerReceiver(baseEventReceiver, filter2);
 
         IntentFilter filter3 = new IntentFilter(CtrlService.BC_FOREGROUND_CHECKER);
@@ -113,7 +116,10 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
         alarmIntent = PendingIntent.getBroadcast(context, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT);
         alarmMgr.setInexactRepeating(AlarmManager.RTC, System.currentTimeMillis(), 2000, alarmIntent);
         Log.i(TAG, "AlarmManager set.");
-        actionBar.setSubtitle("Connecting...");
+
+        ctrlConnectedSubtitle = "Connecting...";
+        baseConnected = base.isConnected();
+        updateSubtitle();
 
         if (CommonStuff.getNetConnectivityStatus(context) == CommonStuff.NET_NOT_CONNECTED) {
             Toast.makeText(context, "No Internet Connectivity!", Toast.LENGTH_LONG).show();
@@ -194,22 +200,22 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
 
     @Override
     public void serviceConnectionError(Context context, Intent intent) {
-        ActionBar actionBar = getActionBar();
-        actionBar.setSubtitle("Error!");
+        ctrlConnectedSubtitle = "Error!";
+        updateSubtitle();
     }
 
     @Override
     public void serviceConnectionIdle(Context context, Intent intent) {
-        ActionBar actionBar = getActionBar();
-        actionBar.setSubtitle("Disconnected");
+        ctrlConnectedSubtitle = "Disconnected";
+        updateSubtitle();
     }
 
     @Override
     public void serviceConnectionRunning(Context context, Intent intent) {
-        ActionBar actionBar = getActionBar();
-        actionBar.setSubtitle("Connected");
+        ctrlConnectedSubtitle = "Connected";
+        updateSubtitle();
 
-        NotificationManager notificationManager = (NotificationManager)context.getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         notificationManager.cancel(base.getBaseid(), CommonStuff.CTRL_NOTIFICATION_ID);
     }
 
@@ -251,13 +257,24 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
 
     // Will be overriden by child class
     @Override
-    public void baseNewDataArrival(String baseId) {
+    public void baseNewDataArrival(String baseId, String data) {
         // Not implemented here...
     }
 
     // Will be overriden by child class
     @Override
     public void baseNewConnectionStatus(String baseId, boolean connected) {
-        // Not implemented here...
+        baseConnected = connected;
+        updateSubtitle();
+
+        // The rest is not implemented here...
+    }
+
+    private void updateSubtitle() {
+        String baseConnText = "Offline";
+        if (baseConnected)
+            baseConnText = "Online";
+
+        actionBar.setSubtitle(ctrlConnectedSubtitle + ", " + baseConnText);
     }
 }

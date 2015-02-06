@@ -9,10 +9,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.nio.charset.Charset;
 import java.security.KeyManagementException;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
@@ -51,6 +50,7 @@ import android.util.SparseArray;
 
 public class CtrlService extends Service implements NetworkStateReceiverCallbacks {
     private static String TAG = "CtrlBaService";
+    final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
 
     // Google Cloud Messaging PROJECT ID
     public static final String GCM_SENDER_ID = "982449092255";
@@ -80,6 +80,7 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
     public static final String BC_BASE_EVENT = "ba.ctrl.ctrltest1.intent.action.BC_BASE_EVENT";
     public static final String BC_BASE_EVENT_BASE_ID_KEY = BC_BASE_EVENT + "_BASE_ID_KEY";
     public static final String BC_BASE_EVENT_CONNECTED_KEY = BC_BASE_EVENT + "_BASE_CONNECTED_KEY";
+    public static final String BC_BASE_EVENT_DATA_KEY = BC_BASE_EVENT + "_DATA_KEY";
 
     // for sending service status broadcasts TO activities
     public static final String BC_SERVICE_STATUS = "ba.ctrl.ctrltest1.intent.action.BC_SERVICE_STATUS";
@@ -664,7 +665,7 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
 
                                 dataSource.saveBaseData(msg.getBaseIds().get(0), msg.getData().toString());
                                 dataSource.updateBaseLastActivity(msg.getBaseIds().get(0));
-                                broadcastNewBaseDataArrival(msg.getBaseIds().get(0));
+                                broadcastNewBaseDataArrival(msg.getBaseIds().get(0), msg.getData().toString());
 
                                 // Call appropriate BaseDataParser that will
                                 // possibly show notifications and stuff if
@@ -756,8 +757,6 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
     }
 
     private void callBaseDataParserWhenBackgrounded(final String baseId, final String data, final boolean connectedStateChanged, final boolean connected) {
-        Log.i(TAG, "callBaseDataParserWhenBackgrounded");
-
         // Check if there is Activity for this Base in foreground. If not, call
         // appropriate BaseDataParser that will possibly show notifications
         Intent survIntent = new Intent();
@@ -773,8 +772,6 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                 int result = getResultCode();
                 // No activity in foreground
                 if (result == Activity.RESULT_CANCELED) {
-                    Log.i(TAG, "callBaseDataParserWhenBackgrounded, activity in BACKGROUND, calling parser class...");
-
                     Base b = dataSource.getBase(baseId);
                     Class<? extends BaseDataParserInterface> bdpi = getDataParserClass(b.getBaseType());
                     if (bdpi != null) {
@@ -792,7 +789,6 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                 // Yep, activity is in foreground!
                 else {
                     // Nothing here...
-                    Log.i(TAG, "callBaseDataParserWhenBackgrounded, activity in FOREGROUND!");
                 }
             }
         }, null, Activity.RESULT_CANCELED, null, null);
@@ -982,11 +978,12 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
         }
     }
 
-    private void broadcastNewBaseDataArrival(String baseId) {
+    private void broadcastNewBaseDataArrival(String baseId, String data) {
         Intent broadcastIntent = new Intent();
         broadcastIntent.setAction(BC_BASE_EVENT);
         broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
         broadcastIntent.putExtra(BC_BASE_EVENT_BASE_ID_KEY, baseId);
+        broadcastIntent.putExtra(BC_BASE_EVENT_DATA_KEY, data);
         try {
             sendBroadcast(broadcastIntent);
         }
@@ -1082,19 +1079,8 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                 final CtrlMessage msg = new CtrlMessage();
                 msg.setIsNotification(intent.hasExtra("isNotification") && intent.getBooleanExtra("isNotification", false));
 
-                // TODO: NEEDS WORK!
                 String sendData = intent.getStringExtra("sendData");
-                try {
-                    sendData = String.format("%x", new BigInteger(1, sendData.getBytes("US-ASCII")));
-                }
-                catch (UnsupportedEncodingException e) {
-                    e.printStackTrace();
-                }
-                // never send odd length to Server
-                if (sendData.length() % 2 != 0) {
-                    sendData = "0" + sendData;
-                }
-
+                sendData = bytesToHex(sendData.getBytes(Charset.forName("US-ASCII")));
                 msg.setData(sendData);
 
                 if (intent.hasExtra("baseIds")) {
@@ -1145,4 +1131,14 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
         }
     }
 
+    // http://stackoverflow.com/questions/9655181/convert-from-byte-array-to-hex-string-in-java
+    public static String bytesToHex(byte[] bytes) {
+        char[] hexChars = new char[bytes.length * 2];
+        for (int j = 0; j < bytes.length; j++) {
+            int v = bytes[j] & 0xFF;
+            hexChars[j * 2] = hexArray[v >>> 4];
+            hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+        }
+        return new String(hexChars);
+    }
 }
