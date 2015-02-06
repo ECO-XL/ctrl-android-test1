@@ -1049,23 +1049,6 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
         }
     }
 
-    /*
-        private void broadcastServiceTaskCompletion(Bundle bundle) {
-            Intent broadcastIntent = new Intent();
-            broadcastIntent.setAction(BC_SERVICE_TASKS_COMPLETION);
-            broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
-
-            broadcastIntent.putExtras(bundle);
-
-            try {
-                sendBroadcast(broadcastIntent);
-            }
-            catch (Exception e) {
-                Log.e(TAG, "broadcastServiceTaskCompletion() Error: " + e.getMessage());
-            }
-        }
-    */
-
     // Receiving tasks from Activities
     public class ServiceTasksReceiver extends BroadcastReceiver {
         @Override
@@ -1099,6 +1082,7 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                 final CtrlMessage msg = new CtrlMessage();
                 msg.setIsNotification(intent.hasExtra("isNotification") && intent.getBooleanExtra("isNotification", false));
 
+                // TODO: NEEDS WORK!
                 String sendData = intent.getStringExtra("sendData");
                 try {
                     sendData = String.format("%x", new BigInteger(1, sendData.getBytes("US-ASCII")));
@@ -1138,13 +1122,12 @@ public class CtrlService extends Service implements NetworkStateReceiverCallback
                     startQueuedItemsSender();
                 }
 
-                // Send back a result code. This will go back only if we were
-                // called by sendOrderedBroadcast, not by sendBroadcast.
-                // broadcastServiceTaskCompletion(intent.getExtras()); <- not
-                // anymore
-                if (this.isOrderedBroadcast())
-                    this.setResultCode(Activity.RESULT_OK);
             }
+
+            // Send back a result code. This will go back only if we were
+            // called by sendOrderedBroadcast, not by sendBroadcast.
+            if (this.isOrderedBroadcast())
+                this.setResultCode(Activity.RESULT_OK);
         }
     }
 
