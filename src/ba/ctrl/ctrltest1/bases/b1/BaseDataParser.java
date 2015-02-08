@@ -45,8 +45,7 @@ public class BaseDataParser implements BaseDataParserInterface {
         }
         // Nope, this is some new data arrived
         else {
-            // Servo Experiment doesn't send any data, so this shouldn't
-            // execute...
+            showNotification(context, baseId, b.getTitle() + " rotated", "New position: " + Misc.dataToStringDegrees(data) + " degrees.", true);
         }
     }
 

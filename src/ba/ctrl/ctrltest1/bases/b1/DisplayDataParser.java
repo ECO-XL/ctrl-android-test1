@@ -16,9 +16,14 @@ public class DisplayDataParser implements DisplayDataParserInterface {
             dataSource = DataSource.getInstance(context);
         }
 
-        // This is a Servo Experiment so just display BaseID every time
-        displayData = base.getBaseid();
+        String data = dataSource.getLatestBaseData(base.getBaseid());
 
+        if (data.equals("")) {
+            displayData = "No data received yet.";
+            return displayData;
+        }
+
+        displayData = "Position: " + Misc.dataToStringDegrees(data) + " degrees.";
         return displayData;
     }
 

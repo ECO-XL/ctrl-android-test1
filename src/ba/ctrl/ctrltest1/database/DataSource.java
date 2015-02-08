@@ -190,11 +190,11 @@ public class DataSource {
     }
 
     /**
-     * Used only for DEBUGING!
+     * Returns lastest BaseData
      *
      * @return
      */
-    public String getLatestBaseDataBase(String baseId) {
+    public String getLatestBaseData(String baseId) {
         open();
 
         String ret = "";

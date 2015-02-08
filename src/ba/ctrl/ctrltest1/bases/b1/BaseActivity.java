@@ -17,6 +17,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.SeekBar.OnSeekBarChangeListener;
 
@@ -24,7 +25,6 @@ public class BaseActivity extends BaseTemplateActivity {
     private static final String TAG = "b1.BaseActivity";
 
     private Base base;
-
     private Context context;
 
     @Override
@@ -36,40 +36,45 @@ public class BaseActivity extends BaseTemplateActivity {
 
         context = super.getApplicationContext();
 
-        /* IMPLEMENTATION OF THIS BASE TYPE 0 : */
-
-        final SeekBar seekBar = (SeekBar) findViewById(R.id.seekBar1);
+        /* IMPLEMENTATION OF THIS BASE TYPE 1 : */
 
         ((Button) findViewById(R.id.btnSend)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                SeekBar seekBar = (SeekBar) findViewById(R.id.seekBar1);
                 seekBar.setProgress(0);
+                sendCurrentSeekBarValue();
             }
         });
 
         ((Button) findViewById(R.id.button2)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                SeekBar seekBar = (SeekBar) findViewById(R.id.seekBar1);
                 seekBar.setProgress(500);
+                sendCurrentSeekBarValue();
             }
         });
 
         ((Button) findViewById(R.id.button3)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                SeekBar seekBar = (SeekBar) findViewById(R.id.seekBar1);
                 seekBar.setProgress(1000);
+                sendCurrentSeekBarValue();
             }
         });
 
+        SeekBar seekBar = (SeekBar) findViewById(R.id.seekBar1);
         seekBar.setOnSeekBarChangeListener(new OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                sendCurrentSeekBarValue();
             }
 
             public void onStartTrackingTouch(SeekBar seekBar) {
             }
 
             public void onStopTrackingTouch(SeekBar seekBar) {
+                sendCurrentSeekBarValue();
             }
         });
 
@@ -82,13 +87,25 @@ public class BaseActivity extends BaseTemplateActivity {
         }
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        String data = super.getDataSource().getLatestBaseData(base.getBaseid());
+        if (data.equals(""))
+            return;
+
+        TextView tvDegrees = (TextView) findViewById(R.id.tvDegrees);
+        tvDegrees.setText(Misc.dataToStringDegrees(data) + " degrees");
+
+        SeekBar seekBar = (SeekBar) findViewById(R.id.seekBar1);
+        seekBar.setProgress(Misc.angleToProgressValue(Misc.dataToDoubleDegrees(data)));
+    }
+
     private void sendCurrentSeekBarValue() {
         CheckBox checkBox = (CheckBox) findViewById(R.id.ckSendAsNotification);
         SeekBar seekBar = (SeekBar) findViewById(R.id.seekBar1);
-
         short val = (short) (seekBar.getProgress() + 1000);
-
-        Log.i(TAG, "SEEKBAR: " + val);
 
         // lets target just this Base...
         ArrayList<String> baseIds = new ArrayList<String>();
@@ -133,6 +150,12 @@ public class BaseActivity extends BaseTemplateActivity {
         super.getDataSource().markBaseDataSeen(base.getBaseid());
 
         // do sometihng about this new data arrival event
+
+        TextView tvDegrees = (TextView) findViewById(R.id.tvDegrees);
+        tvDegrees.setText(Misc.dataToStringDegrees(data) + " degrees");
+
+        SeekBar seekBar = (SeekBar) findViewById(R.id.seekBar1);
+        seekBar.setProgress(Misc.angleToProgressValue(Misc.dataToDoubleDegrees(data)));
     }
 
     @Override

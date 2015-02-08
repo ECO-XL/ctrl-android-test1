@@ -18,7 +18,7 @@ public class DisplayDataParser implements DisplayDataParserInterface {
 
         // Since this is a Generic Base, lets just display last data we
         // received. If there is no data then display BaseID
-        displayData = dataSource.getLatestBaseDataBase(base.getBaseid());
+        displayData = dataSource.getLatestBaseData(base.getBaseid());
         if (displayData.equals("")) {
             displayData = base.getBaseid();
         }

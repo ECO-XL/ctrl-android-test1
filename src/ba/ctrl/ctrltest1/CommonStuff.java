@@ -18,59 +18,25 @@ public class CommonStuff {
     public final static int NET_WIFI = 1;
     public final static int NET_MOBILE = 2;
 
-    /*
-        public static void serviceRequestStatus(Context context) {
-            Intent broadcastIntent = new Intent();
-            broadcastIntent.setAction(CtrlService.BC_SERVICE_TASKS);
-            broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
-            broadcastIntent.putExtra(CtrlService.BC_SERVICE_TASKS_KEY, CtrlService.BC_SERVICE_TASKS_REQUEST_CONNECTION_STATUS);
-            try {
-                context.sendBroadcast(broadcastIntent);
-            }
-            catch (Exception e) {
-                Log.e(TAG, "requestServiceStatus() Error: " + e.getMessage());
-            }
+    // http://stackoverflow.com/questions/140131/convert-a-string-representation-of-a-hex-dump-to-a-byte-array-using-java
+    public static byte[] hexStringToByteArray(String s) {
+        int len = s.length();
+        byte[] data = new byte[len / 2];
+        for (int i = 0; i < len; i += 2) {
+            data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4) + Character.digit(s.charAt(i + 1), 16));
         }
+        return data;
+    }
 
-        public static void serviceTaskGcmRereg(Context context) {
-            Intent broadcastIntent = new Intent();
-            broadcastIntent.setAction(CtrlService.BC_SERVICE_TASKS);
-            broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
-            broadcastIntent.putExtra(CtrlService.BC_SERVICE_TASKS_KEY, CtrlService.BC_SERVICE_TASKS_GCM_REREG);
-            try {
-                context.sendBroadcast(broadcastIntent);
-            }
-            catch (Exception e) {
-                Log.e(TAG, "serviceCommandGcmRereg() Error: " + e.getMessage());
-            }
+    // http://stackoverflow.com/questions/4785654/convert-a-string-of-hex-into-ascii-in-java
+    public static String hexStringToString(String hex) {
+        StringBuilder output = new StringBuilder();
+        for (int i = 0; i < hex.length(); i += 2) {
+            String str = hex.substring(i, i + 2);
+            output.append((char) Integer.parseInt(str, 16));
         }
-
-        public static void serviceTaskRestart(Context context) {
-            Intent broadcastIntent = new Intent();
-            broadcastIntent.setAction(CtrlService.BC_SERVICE_TASKS);
-            broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
-            broadcastIntent.putExtra(CtrlService.BC_SERVICE_TASKS_KEY, CtrlService.BC_SERVICE_TASKS_RESTART_CONNECTION);
-            try {
-                context.sendBroadcast(broadcastIntent);
-            }
-            catch (Exception e) {
-                Log.e(TAG, "commandServiceRestart() Error: " + e.getMessage());
-            }
-        }
-
-        public static void serviceTaskClose(Context context) {
-            Intent broadcastIntent = new Intent();
-            broadcastIntent.setAction(CtrlService.BC_SERVICE_TASKS);
-            broadcastIntent.addCategory(Intent.CATEGORY_DEFAULT);
-            broadcastIntent.putExtra(CtrlService.BC_SERVICE_TASKS_KEY, CtrlService.BC_SERVICE_TASKS_CLOSE_CONNECTION);
-            try {
-                context.sendBroadcast(broadcastIntent);
-            }
-            catch (Exception e) {
-                Log.e(TAG, "commandServiceClose() Error: " + e.getMessage());
-            }
-        }
-    */
+        return output.toString();
+    }
 
     public static String getCustomSslCertDir(Context context) {
         return Environment.getExternalStorageDirectory().getAbsolutePath() + "/Android/data/" + context.getPackageName() + "/cert";
