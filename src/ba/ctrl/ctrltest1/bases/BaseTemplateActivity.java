@@ -1,5 +1,8 @@
 package ba.ctrl.ctrltest1.bases;
 
+import java.util.ArrayList;
+import java.util.Locale;
+
 import ba.ctrl.ctrltest1.CommonStuff;
 import ba.ctrl.ctrltest1.CtrlSettingsActivity;
 import ba.ctrl.ctrltest1.database.DataSource;
@@ -19,11 +22,13 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.widget.Toast;
 
-public class BaseTemplateActivity extends Activity implements ServiceStatusReceiverCallbacks, BaseEventReceiverCallbacks {
+public class BaseTemplateActivity extends Activity implements ServiceStatusReceiverCallbacks, BaseEventReceiverCallbacks, TextToSpeech.OnInitListener {
     private String TAG = "BaseTemplateActivity";
 
     private Context context;
@@ -43,6 +48,15 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
     private String ctrlConnectedSubtitle;
     private boolean baseConnected = true;
 
+    private String voiceCommand;
+
+    private TextToSpeech tts;
+    private boolean ttsIsReady = false;
+    private ArrayList<String> speakOutQueue;
+
+    private SharedPreferences sharedPref;
+    private SharedPreferences.Editor sharedPrefEditor;
+
     // For "pinging" the Service to keep it running
     private AlarmManager alarmMgr;
     private PendingIntent alarmIntent;
@@ -58,6 +72,9 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
         }
 
         context = this.getApplicationContext();
+
+        sharedPref = this.getPreferences(Context.MODE_PRIVATE);
+        sharedPrefEditor = sharedPref.edit();
 
         // Get parameter from MainActivity
         Bundle extras = getIntent().getExtras();
@@ -76,6 +93,8 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
             finish();
             return; // don't go any further
         }
+
+        voiceCommand = extras.getString("voiceCommand", "");
 
         baseType = base.getBaseType();
 
@@ -195,6 +214,13 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
     protected void onDestroy() {
         Log.i(TAG, "onDestroy()");
 
+        // Don't forget to shutdown tts!
+        if(tts != null)
+        {
+            tts.stop();
+            tts.shutdown();
+        }
+
         super.onDestroy();
     }
 
@@ -235,12 +261,28 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
         startActivity(settingsIntent);
     }
 
+    public String getVoiceCommand() {
+        return this.voiceCommand;
+    }
+
     public Base getBase() {
         return this.base;
     }
 
+    public boolean isBaseConnected() {
+        return this.baseConnected;
+    }
+
     public void reloadBase() {
         base = dataSource.getBase(base.getBaseid());
+    }
+
+    public SharedPreferences getSharedPref() {
+        return this.sharedPref;
+    }
+    
+    public SharedPreferences.Editor getSharedPrefEditor() {
+        return this.sharedPrefEditor;
     }
 
     public void setLayoutR(int rLayoutName) {
@@ -277,4 +319,38 @@ public class BaseTemplateActivity extends Activity implements ServiceStatusRecei
 
         actionBar.setSubtitle(ctrlConnectedSubtitle + ", " + baseConnText);
     }
+
+    /* TEXT TO SPEECH INIT LISTENER */
+    @Override
+    public void onInit(int status) {
+        if (status == TextToSpeech.SUCCESS) {
+            tts.setPitch((float) 1);
+            int result = tts.setLanguage(Locale.US);
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e(TAG, "SPEACH: This Language is not supported");
+            }
+            else {
+                ttsIsReady = true;
+
+                // speak all we have in our own queue
+                for (int i = 0; i < speakOutQueue.size(); i++) {
+                    doSpeak(speakOutQueue.get(i));
+                }
+                speakOutQueue.clear();
+            }
+        }
+        else {
+            Log.e(TAG, "SPEACH: Initilization Failed!");
+        }
+    }
+
+    public void doSpeak(String msg) {
+        if (!ttsIsReady) {
+            speakOutQueue.add(msg);
+        }
+        else {
+            tts.speak(msg, TextToSpeech.QUEUE_ADD, null);
+        }
+    }
+
 }

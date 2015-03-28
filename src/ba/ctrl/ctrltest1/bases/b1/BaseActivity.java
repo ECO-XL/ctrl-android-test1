@@ -10,6 +10,7 @@ import ba.ctrl.ctrltest1.service.CtrlServiceContacter;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -37,6 +38,31 @@ public class BaseActivity extends BaseTemplateActivity {
         context = super.getApplicationContext();
 
         /* IMPLEMENTATION OF THIS BASE TYPE 1 : */
+
+        if (!"".equals(super.getVoiceCommand())) {
+            // We have voice command, lets see which one it is, and to execute
+            // the appropriate action.
+            // We have: left, right and center commands.
+
+            String key = "voicecommand_" + base.getBaseid() + "_" + super.getVoiceCommand();
+            String voiceCommandAction = super.getSharedPref().getString(key, "");
+
+            if (voiceCommandAction.equals("left")) {
+                super.doSpeak("Turning left");
+                ((Button) findViewById(R.id.btnSend)).performClick();
+            }
+            else if (voiceCommandAction.equals("center")) {
+                super.doSpeak("Centering");
+                ((Button) findViewById(R.id.button2)).performClick();
+            }
+            else if (voiceCommandAction.equals("right")) {
+                super.doSpeak("Turning right");
+                ((Button) findViewById(R.id.button3)).performClick();
+            }
+            else {
+                super.doSpeak("Bad command: " + voiceCommandAction + "!");
+            }
+        }
 
         ((Button) findViewById(R.id.btnSend)).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -135,6 +161,19 @@ public class BaseActivity extends BaseTemplateActivity {
             Intent intent = new Intent(this, BaseSettingsActivity.class);
             intent.putExtra("baseid", base.getBaseid());
             startActivity(intent);
+        }
+        else if (item.getItemId() == R.id.action_learn_voice_commands) {
+            // add defaults for now...
+            super.getSharedPrefEditor().putString("voicecommand_turn left", base.getBaseid());
+            super.getSharedPrefEditor().putString("voicecommand_" + base.getBaseid() + "_turn left", "left");
+            
+            super.getSharedPrefEditor().putString("voicecommand_center", base.getBaseid());
+            super.getSharedPrefEditor().putString("voicecommand_" + base.getBaseid() + "_turn left", "left");
+            
+            super.getSharedPrefEditor().putString("voicecommand_turn right", base.getBaseid());
+            super.getSharedPrefEditor().putString("voicecommand_" + base.getBaseid() + "_turn left", "left");
+
+            super.getSharedPrefEditor().apply();
         }
         else {
             return super.onOptionsItemSelected(item);

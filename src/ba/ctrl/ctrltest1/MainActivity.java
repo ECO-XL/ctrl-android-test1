@@ -1,5 +1,8 @@
 package ba.ctrl.ctrltest1;
 
+import java.util.ArrayList;
+import java.util.Locale;
+
 import ba.ctrl.ctrltest1.adapters.BaseListAdapter;
 import ba.ctrl.ctrltest1.bases.Base;
 import ba.ctrl.ctrltest1.database.DataSource;
@@ -23,6 +26,9 @@ import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
+import android.speech.RecognizerIntent;
+import android.speech.tts.TextToSpeech;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -31,8 +37,9 @@ import android.widget.AdapterView;
 import android.widget.Toast;
 import ba.ctrl.ctrltest1.R;
 
-public class MainActivity extends ListActivity implements ServiceStatusReceiverCallbacks, BaseEventReceiverCallbacks {
+public class MainActivity extends ListActivity implements ServiceStatusReceiverCallbacks, BaseEventReceiverCallbacks, TextToSpeech.OnInitListener {
     private final static int REQ_CODE_PLAY_SERVICES_RESOLUTION = 9000;
+    private static final int REQ_CODE_VOICE_RECOGNITION = 7000;
     private static final String TAG = "MainActivity";
 
     private Context context;
@@ -45,6 +52,12 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
     private ForegroundCheckerReceiver foregroundCheckerReceiver;
 
     private ActionBar actionBar;
+
+    private SharedPreferences sharedPref;
+
+    private TextToSpeech tts;
+    private boolean ttsIsReady = false;
+    private ArrayList<String> speakOutQueue;
 
     // For "pinging" the Service to keep it running
     private AlarmManager alarmMgr;
@@ -60,11 +73,16 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
             dataSource = DataSource.getInstance(this);
         }
 
+        sharedPref = this.getPreferences(Context.MODE_PRIVATE);
+
         context = this.getApplicationContext();
 
         adapter = null; // treba da bi onStart() inicijalno ucitao podatke
                         // onCreate() -> onStart() -> onRestoreInstanceState()
                         // -> onResume()
+
+        tts = new TextToSpeech(this, this);
+        speakOutQueue = new ArrayList<String>();
 
         actionBar = getActionBar();
 
@@ -73,12 +91,12 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
             @Override
             public void onItemClick(AdapterView<?> parent, final View view, int position, long id) {
                 Base b = (Base) adapter.getItem(position);
-                startBaseActivity(b);
+                startBaseActivity(b, null);
             }
         });
     }
 
-    private void startBaseActivity(Base b) {
+    private void startBaseActivity(Base b, String voiceCommand) {
         String cname = getApplicationContext().getPackageName() + ".bases.b" + b.getBaseType() + ".BaseActivity";
         Class<?> c = null;
         if (cname != null) {
@@ -88,6 +106,11 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
                 // open it
                 Intent intent = new Intent(MainActivity.this, c);
                 intent.putExtra("baseid", b.getBaseid());
+
+                // has voice command?
+                if (voiceCommand != null) {
+                    intent.putExtra("voiceCommand", voiceCommand);
+                }
 
                 startActivity(intent);
             }
@@ -190,6 +213,13 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
 
     @Override
     protected void onDestroy() {
+        // Don't forget to shutdown tts!
+        if(tts != null)
+        {
+            tts.stop();
+            tts.shutdown();
+        }
+
         super.onDestroy();
     }
 
@@ -205,6 +235,11 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
         if (item.getItemId() == R.id.action_ctrl_settings) {
             Intent intent = new Intent(this, CtrlSettingsActivity.class);
             startActivity(intent);
+        }
+        else if (item.getItemId() == R.id.action_voice_command) {
+            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            startActivityForResult(intent, REQ_CODE_VOICE_RECOGNITION);
         }
         else {
             return super.onOptionsItemSelected(item);
@@ -236,6 +271,44 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
             return false;
         }
         return true;
+    }
+
+    /**
+     * Handles the results from the recognition activity.
+     */
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        switch (requestCode) {
+            case REQ_CODE_VOICE_RECOGNITION: {
+                if (resultCode == RESULT_OK && data != null) {
+                    ArrayList<String> matches = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                    Base foundBase = null;
+                    String cmd = "";
+                    for (int i = 0; i < matches.size(); i++) {
+                        cmd = matches.get(i);
+                        String baseId = sharedPref.getString("voicecommand_" + cmd.toLowerCase(Locale.US), "");
+                        foundBase = dataSource.getBase(baseId);
+                        if (foundBase != null) {
+                            break; // command found!
+                        }
+                    }
+
+                    // if module for this command has been found, start it's
+                    // activity and execute action
+                    if (foundBase != null) {
+                        startBaseActivity(foundBase, cmd);
+                    }
+                    else {
+                        doSpeak("Unknown command, please try again!");
+                        Log.i(TAG, "VOICE COMMAND: " + cmd);
+                    }
+                }
+            }
+                break;
+
+            default:
+                super.onActivityResult(requestCode, resultCode, data);
+        }
     }
 
     @Override
@@ -280,6 +353,39 @@ public class MainActivity extends ListActivity implements ServiceStatusReceiverC
     @Override
     public void baseNewConnectionStatus(String baseId, boolean connected) {
         refreshListView();
+    }
+
+    /* TEXT TO SPEECH INIT LISTENER */
+    @Override
+    public void onInit(int status) {
+        if (status == TextToSpeech.SUCCESS) {
+            tts.setPitch((float) 1);
+            int result = tts.setLanguage(Locale.US);
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                Log.e(TAG, "SPEACH: This Language is not supported");
+            }
+            else {
+                ttsIsReady = true;
+
+                // speak all we have in our own queue
+                for (int i = 0; i < speakOutQueue.size(); i++) {
+                    doSpeak(speakOutQueue.get(i));
+                }
+                speakOutQueue.clear();
+            }
+        }
+        else {
+            Log.e(TAG, "SPEACH: Initilization Failed!");
+        }
+    }
+
+    public void doSpeak(String msg) {
+        if (!ttsIsReady) {
+            speakOutQueue.add(msg);
+        }
+        else {
+            tts.speak(msg, TextToSpeech.QUEUE_ADD, null);
+        }
     }
 
 }

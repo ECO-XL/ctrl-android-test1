@@ -8,7 +8,9 @@
     <string name="title_activity_base0">Generic Base</string>
     <string name="title_activity_base1">Servo Experiment</string>
     <string name="action_settings">Settings</string>
-
+    <string name="action_voice_command">Say</string>
+    <string name="action_learn_voice_commands">Learn Voice Commands</string>
+    
     <!-- Preferences arrays -->
     <string-array name="pref_base_type_titles">
         <item>Generic Base</item>
